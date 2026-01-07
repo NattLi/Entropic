@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+dist-electron/
+release/
+out/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Resources (large files excluded from git)
+resources/jdk/**/*
+resources/processing/*.jar
+
+# But keep structure files
+!resources/README.md
+!resources/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Temporary files  
+*.tmp
+*.temp
+.cache/
+
+# Electron
+electron/main.ts.backup
