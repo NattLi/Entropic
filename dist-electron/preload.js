@@ -14,5 +14,7 @@ contextBridge.exposeInMainWorld("processingAPI", {
   },
   removeOutputListener: () => {
     ipcRenderer.removeAllListeners("sketch-output");
-  }
+  },
+  checkLibrary: (libName) => ipcRenderer.invoke("check-library", libName),
+  openLibraryFolder: () => ipcRenderer.invoke("open-library-folder")
 });

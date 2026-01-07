@@ -8,22 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Standalone Build Support**: Bundled JDK (Windows/Mac) and Processing Core libraries resources.
+- **Library Auto-Detection**: Real-time parsing of `import` statements with UI feedback ("Installed" or "Install").
+- **Mac Compatibility**: Verified cross-platform resource bundling.
 - Initial project setup with Electron + React + TypeScript + Vite
 - Monaco Editor integration for code editing
 - Processing 4.x core integration with Java compilation
 - Real-time console output display
-- Modern UI with vertical layout (editor above, console below)
+- Modern UI with vertical layout
 - Copy and clear buttons for console
 - System Processing detection (automatic fallback)
-- UTF-8 encoding support for Chinese comments
+- UTF-8 encoding support
 - Cross-platform resource path management
-- Settings() method support for Processing 4.x compatibility
+- Settings() method support for Processing 4.x
 
 ### Fixed
+- **Critical**: `import` statements are now correctly extracted to the top of the generated Java file, fixing "illegal start of type" errors for complex sketches.
+- **Typos**: Fixed type errors in Editor.tsx.
 - Java compilation encoding issues (GBK to UTF-8)
 - Public method modifier handling for Processing methods
-- size() method placement in settings() instead of setup()
-- Recursive file search for Processing installation detection
+- size() method placement in settings()
+- Recursive file search for Processing detection
 
 ### Technical Details
 - Built complete .pde to .java conversion pipeline

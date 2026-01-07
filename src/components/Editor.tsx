@@ -18,8 +18,10 @@ void draw() {
 }
 `
 
-const Editor = forwardRef((props, ref) => {
+// @ts-ignore
+const Editor = forwardRef((props: any, ref: any) => {
     const editorRef = useRef<any>(null)
+    const { onChange } = props
 
     useImperativeHandle(ref, () => ({
         getCode: () => {
@@ -55,6 +57,12 @@ const Editor = forwardRef((props, ref) => {
         monaco.editor.setTheme('creativity-dark')
     }
 
+    const handleEditorChange = (value: string | undefined) => {
+        if (onChange && value !== undefined) {
+            onChange(value)
+        }
+    }
+
     return (
         <div className="editor-wrapper">
             <div className="editor-header">
@@ -66,6 +74,7 @@ const Editor = forwardRef((props, ref) => {
                 defaultLanguage="java"
                 defaultValue={DEFAULT_CODE}
                 onMount={handleEditorDidMount}
+                onChange={handleEditorChange}
                 options={{
                     fontSize: 14,
                     lineHeight: 22,
@@ -73,11 +82,11 @@ const Editor = forwardRef((props, ref) => {
                     fontLigatures: true,
 
                     // 层级划线
-                    renderIndentGuides: true,
-                    guides: {
-                        indentation: true,
-                        highlightActiveIndentation: true
-                    },
+                    // renderIndentGuides: true,
+                    // guides: {
+                    //    indentation: true,
+                    //    highlightActiveIndentation: true
+                    // },
 
                     // 简化界面
                     minimap: { enabled: false },

@@ -193,27 +193,34 @@ function findSystemProcessing() {
 // ========= Processing 编译核心 =========
 
 function convertPdeToJava(pdeCode, className) {
-    // 步骤1: 给所有 void 方法添加 public 修饰符
-    // 匹配行首的 void，替换为 public void
-    let processedCode = pdeCode.replace(/^(\s*)void\s+/gm, '$1public void ')
+    // 步骤1: 提取 import 语句
+    const importRegex = /^\s*import\s+.*;\s*$/gm
+    const userImports = pdeCode.match(importRegex) || []
 
-    // 步骤2: 给所有行添加2空格缩进
-    const lines = processedCode.split('\n')
+    // 从源代码中移除 import 语句，只保留主体
+    let codeBody = pdeCode.replace(importRegex, '')
+
+    // 步骤2: 给所有 void 方法添加 public 修饰符
+    let processedBody = codeBody.replace(/^(\s*)void\s+/gm, '$1public void ')
+
+    // 步骤3: 给所有行添加2空格缩进
+    const lines = processedBody.split('\n')
     const indentedLines = lines.map(line => '  ' + line)
     const indentedCode = indentedLines.join('\n')
 
     // 检查是否已经有 setup/draw/settings 函数
-    const hasSetup = /void\s+setup\s*\(/.test(pdeCode)
-    const hasDraw = /void\s+draw\s*\(/.test(pdeCode)
-    const hasSettings = /void\s+settings\s*\(/.test(pdeCode)
+    const hasSetup = /void\s+setup\s*\(/.test(codeBody)
+    const hasDraw = /void\s+draw\s*\(/.test(codeBody)
+    const hasSettings = /void\s+settings\s*\(/.test(codeBody)
 
-    // 步骤3: 构建完整的 Java 类
+    // 步骤4: 构建完整的 Java 类
     let javaCode = `import processing.core.*;
 import processing.data.*;
 import processing.event.*;
 import processing.opengl.*;
 
-import java.util.*;
+// 用户自定义 import
+${userImports.join('\n')}
 
 public class ${className} extends PApplet {
 
@@ -576,6 +583,54 @@ ipcMain.handle('stop-sketch', async () => {
         }
     }
     return { success: true, stopped: false }
+})
+
+ipcMain.handle('check-library', async (event, libName) => {
+    try {
+        const platform = os.platform()
+        // Determine library name from import (e.g., 'processing.serial' -> 'serial', 'controlP5' -> 'controlP5')
+        // Processing libs usually share the name of the package.
+        // We will look for exactly the jar name or directory.
+
+        let targetName = libName;
+        if (libName.startsWith('processing.')) {
+            targetName = libName.split('.')[1]; // serial, video, sound
+        }
+
+        const processingDir = getResourcePath('processing')
+        if (!fs.existsSync(processingDir)) return false;
+
+        const items = fs.readdirSync(processingDir);
+
+        // Strategy: Look for [targetName].jar OR [targetName] folder OR case-insensitive match
+        const found = items.some(item => {
+            const lowerItem = item.toLowerCase();
+            const lowerTarget = targetName.toLowerCase();
+
+            // Check for jar
+            if (lowerItem === `${lowerTarget}.jar`) return true;
+            // Check for folder
+            if (lowerItem === lowerTarget && fs.statSync(path.join(processingDir, item)).isDirectory()) return true;
+
+            // Fallback: Check if item *starts* with target (e.g. 'video' inside 'processing-video-1.0.jar' - simpler match)
+            if (lowerItem.includes(lowerTarget)) return true;
+
+            return false;
+        });
+
+        return found;
+    } catch (e) {
+        return false;
+    }
+})
+
+ipcMain.handle('open-library-folder', async () => {
+    const processingDir = getResourcePath('processing')
+    if (!fs.existsSync(processingDir)) {
+        fs.mkdirSync(processingDir, { recursive: true })
+    }
+    const { shell } = require('electron')
+    await shell.openPath(processingDir)
 })
 
 app.whenReady().then(createWindow)

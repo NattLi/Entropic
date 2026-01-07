@@ -42,10 +42,12 @@
             "dist-electron/**/*"
         ],
         "win": {
-            "target": "nsis"
+            "target": "dir",
+            "artifactName": "${productName}-Win-${version}.${ext}"
         },
         "mac": {
-            "target": "dmg"
+            "target": "dir",
+            "artifactName": "${productName}-Mac-${version}.${ext}"
         }
     }
 }

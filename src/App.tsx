@@ -6,7 +6,11 @@ function App() {
     const [isRunning, setIsRunning] = useState(false)
     const [consoleOutput, setConsoleOutput] = useState<string[]>(['Ready to create! 🚀'])
     const [processingInstalled, setProcessingInstalled] = useState<boolean | null>(null)
+    const [detectedLibs, setDetectedLibs] = useState<{ name: string; installed: boolean }[]>([])
     const editorRef = useRef<any>(null)
+
+    // Debounce timer for library check
+    const checkTimerRef = useRef<any>(null)
 
     useEffect(() => {
         // 检查 Processing 是否安装
@@ -34,6 +38,50 @@ function App() {
             }
         }
     }, [])
+
+    const checkLibraries = async (code: string) => {
+        if (!window.processingAPI) return;
+
+        // Extract imports
+        const importRegex = /^\s*import\s+([^;]+);/gm
+        const imports: string[] = []
+        let match
+        while ((match = importRegex.exec(code)) !== null) {
+            // match[1] 是类似 'processing.serial.*' 或 'controlP5.*'
+            // 我们取第一个部分作为库名，或者完整包名
+            // 简单策略：取 'processing.xxx' 的 xxx，或者 'xxxxx.*' 的 xxxx
+            let lib = match[1].split('.')[0]
+            if (lib === 'processing') {
+                lib = match[1].split('.')[1] // serial, video etc
+            }
+            if (lib === '*') continue; // ignore import *
+
+            // 去重
+            if (!imports.includes(lib)) {
+                imports.push(lib)
+            }
+        }
+
+        if (imports.length === 0) {
+            setDetectedLibs([])
+            return
+        }
+
+        // Check status for each
+        const statuses = await Promise.all(imports.map(async (lib) => {
+            const installed = await window.processingAPI.checkLibrary(lib)
+            return { name: lib, installed }
+        }))
+
+        setDetectedLibs(statuses)
+    }
+
+    const handleEditorChange = (value: string) => {
+        if (checkTimerRef.current) clearTimeout(checkTimerRef.current)
+        checkTimerRef.current = setTimeout(() => {
+            checkLibraries(value)
+        }, 1000) // Debounce 1s
+    }
 
     const addToConsole = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
         const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : '▶'
@@ -88,6 +136,12 @@ function App() {
         setConsoleOutput(['Console cleared'])
     }
 
+    const handleOpenLibs = async () => {
+        if (window.processingAPI) {
+            await window.processingAPI.openLibraryFolder()
+        }
+    }
+
     return (
         <div className="app">
             {/* Toolbar */}
@@ -131,7 +185,7 @@ function App() {
                 <div className="center-panel">
                     {/* Editor */}
                     <div className="editor-container">
-                        <Editor ref={editorRef} />
+                        <Editor ref={editorRef} onChange={handleEditorChange} />
                     </div>
 
                     {/* Console */}
@@ -161,13 +215,32 @@ function App() {
                 <div className="right-panel">
                     <div className="panel-section">
                         <h4>📚 Libraries</h4>
-                        <div className="library-item">
-                            <span>Sound</span>
-                            <span className="status-badge success">✓</span>
-                        </div>
-                        <div className="library-item">
-                            <span>Video</span>
-                            <span className="status-badge success">✓</span>
+                        {detectedLibs.length === 0 ? (
+                            <div className="empty-state">
+                                <span style={{ opacity: 0.5 }}>No Library Needed</span>
+                            </div>
+                        ) : (
+                            detectedLibs.map((lib, idx) => (
+                                <div key={idx} className="library-item">
+                                    <span>{lib.name}</span>
+                                    {lib.installed ? (
+                                        <span className="status-badge success">✅ Installed</span>
+                                    ) : (
+                                        <button
+                                            className="btn-text"
+                                            style={{ color: '#ff79c6', cursor: 'pointer', border: '1px solid #ff79c6', padding: '2px 8px', borderRadius: '4px', fontSize: '12px', background: 'transparent' }}
+                                            onClick={handleOpenLibs}
+                                        >
+                                            👉 Install
+                                        </button>
+                                    )}
+                                </div>
+                            ))
+                        )}
+
+                        {/* 总是显示打开库文件夹的入口，方便用户管理 */}
+                        <div style={{ marginTop: '20px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                            <button className="btn-text" onClick={handleOpenLibs} style={{ opacity: 0.7, fontSize: '12px' }}>📂 Open Libraries Folder</button>
                         </div>
                     </div>
                 </div>

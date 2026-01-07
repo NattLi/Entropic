@@ -140,19 +140,23 @@ function findSystemProcessing() {
   return null;
 }
 function convertPdeToJava(pdeCode, className) {
-  let processedCode = pdeCode.replace(/^(\s*)void\s+/gm, "$1public void ");
-  const lines = processedCode.split("\n");
+  const importRegex = /^\s*import\s+.*;\s*$/gm;
+  const userImports = pdeCode.match(importRegex) || [];
+  let codeBody = pdeCode.replace(importRegex, "");
+  let processedBody = codeBody.replace(/^(\s*)void\s+/gm, "$1public void ");
+  const lines = processedBody.split("\n");
   const indentedLines = lines.map((line) => "  " + line);
   const indentedCode = indentedLines.join("\n");
-  const hasSetup = /void\s+setup\s*\(/.test(pdeCode);
-  const hasDraw = /void\s+draw\s*\(/.test(pdeCode);
-  const hasSettings = /void\s+settings\s*\(/.test(pdeCode);
+  const hasSetup = /void\s+setup\s*\(/.test(codeBody);
+  const hasDraw = /void\s+draw\s*\(/.test(codeBody);
+  const hasSettings = /void\s+settings\s*\(/.test(codeBody);
   let javaCode = `import processing.core.*;
 import processing.data.*;
 import processing.event.*;
 import processing.opengl.*;
 
-import java.util.*;
+// 用户自定义 import
+${userImports.join("\n")}
 
 public class ${className} extends PApplet {
 
@@ -450,5 +454,36 @@ ipcMain.handle("stop-sketch", async () => {
     }
   }
   return { success: true, stopped: false };
+});
+ipcMain.handle("check-library", async (event, libName) => {
+  try {
+    const platform = os.platform();
+    let targetName = libName;
+    if (libName.startsWith("processing.")) {
+      targetName = libName.split(".")[1];
+    }
+    const processingDir = getResourcePath("processing");
+    if (!fs.existsSync(processingDir)) return false;
+    const items = fs.readdirSync(processingDir);
+    const found = items.some((item) => {
+      const lowerItem = item.toLowerCase();
+      const lowerTarget = targetName.toLowerCase();
+      if (lowerItem === `${lowerTarget}.jar`) return true;
+      if (lowerItem === lowerTarget && fs.statSync(path.join(processingDir, item)).isDirectory()) return true;
+      if (lowerItem.includes(lowerTarget)) return true;
+      return false;
+    });
+    return found;
+  } catch (e) {
+    return false;
+  }
+});
+ipcMain.handle("open-library-folder", async () => {
+  const processingDir = getResourcePath("processing");
+  if (!fs.existsSync(processingDir)) {
+    fs.mkdirSync(processingDir, { recursive: true });
+  }
+  const { shell } = require("electron");
+  await shell.openPath(processingDir);
 });
 app.whenReady().then(createWindow);

@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('processingAPI', {
     removeOutputListener: () => {
         ipcRenderer.removeAllListeners('sketch-output')
     },
+    checkLibrary: (libName: string) => ipcRenderer.invoke('check-library', libName),
+    openLibraryFolder: () => ipcRenderer.invoke('open-library-folder'),
 })
 
 export { }
@@ -34,6 +36,8 @@ declare global {
             stopSketch: () => Promise<{ success: boolean; stopped: boolean }>
             onOutput: (callback: (event: any, data: { type: string; data: string }) => void) => void
             removeOutputListener: () => void
+            checkLibrary: (libName: string) => Promise<boolean>
+            openLibraryFolder: () => Promise<void>
         }
     }
 }
