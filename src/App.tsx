@@ -147,7 +147,7 @@ function App() {
             {/* Toolbar */}
             <div className="toolbar">
                 <div className="toolbar-left">
-                    <h1 className="app-title">✨ Processing Studio</h1>
+                    <h1 className="app-title">✨ Entropic</h1>
                     <span className="subtitle">For Designers & Artists</span>
                 </div>
                 <div className="toolbar-right">

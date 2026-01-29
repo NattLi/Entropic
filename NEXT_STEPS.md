@@ -1,41 +1,114 @@
-# Session Handover - 2026-01-07
+# 🔄 Entropic - Session Handover
 
-## 🚀 Current State
-- **Core Functionality**:
-    - [x] Processing Sketch Run/Stop
-    - [x] Console Output (Stdout/Stderr)
-    - [x] Monaco Editor Integration
-    - [x] **Standalone Execution** (No local Processing required)
-    - [x] **Dynamic Library Detection**
-    - [x] **Import Fix** (Preprocessor correctly handles imports now)
+> **项目名称**: Entropic (Entropy + Picture)  
+> **定位**: A modern alternative to Processing IDE  
+> **目标用户**: 设计师和艺术家（非程序员）  
+> **更新日期**: 2026-01-29
 
-- **Environment**:
-    - **Development**: Windows (Primary)
-    - **Build Target**: MacOS (via copying files from Windows, or using the `dir` output)
-    - **Resource Path**: `resources/` contains `processing-core` and `jdk` for both Win/Mac.
+---
 
-## 🐛 Known Issues / To-Do
-1.  **File Management (Critical)**:
-    - The "My Sketches" list is currently hardcoded static HTML.
-    - **Next Task Implementation**: Implement `Open`, `Save`, `New Project` functionality.
-    - Need to hook up `electron/main.ts` file system dialogs.
+## 🎯 项目概述
 
-2.  **Mac Verification v2**:
-    - We verified the build works on Mac, but we updated the code significantly since then.
-    - **Next Step**: User needs to copy updated source to Mac and run `npm run build` again. Then verify `import` heavy sketches work.
+Entropic 是一个面向设计师和艺术家的 Processing IDE 替代品。
 
-3.  **Resource Optimization**:
-    - Currently, we download the full JDKs. We might want to use `jlink` to slim them down if the app size is too big (>500MB).
+**理念**：熵（Entropy）代表混沌与随机，创意编程的本质正是从混沌中创造秩序。
 
-## 📄 Files Changed Today
-- `electron/main.ts`: Added `convertPdeToJava` fix (import extraction) + Library detection IPC.
-- `electron/preload.ts`: Added `checkLibrary` API.
-- `src/App.tsx`: Added Library UI + Logic.
-- `src/components/Editor.tsx`: Added `onChange` support.
-- `CHANGELOG.md`: Updated.
+**技术栈**：
+- Electron + React + TypeScript
+- Vite 构建
+- Monaco Editor 代码编辑器
+- 内置 Processing 运行时（无需用户安装 Processing）
 
-## 📌 Starting Point for Next Session
-Start by tackling **File Management**. We need a real project structure, not just a single in-memory buffer.
-1. Define a Project structure (folder with .pde).
-2. Create `ipcMain` handlers for `create-project`, `save-file`, `open-project`.
-3. Update UI to listing real files.
+---
+
+## ✅ 已完成功能
+
+- [x] Processing Sketch 运行/停止
+- [x] 控制台输出 (Stdout/Stderr)
+- [x] Monaco Editor 集成
+- [x] **独立运行**（内置 JDK + Processing Core，用户无需安装）
+- [x] **动态库检测**（解析 import 语句）
+- [x] **Import 预处理器**（自动转换 PDE → Java）
+
+---
+
+## 🔧 待完成功能
+
+### P0 - 核心功能
+
+1. **文件管理系统**
+   - [ ] 新建项目、保存、打开
+   - [ ] 项目列表（替换硬编码的 My Sketches）
+   - [ ] IPC handlers: `create-project`, `save-file`, `open-project`
+
+2. **发布到 GitHub Release**
+   - [ ] 配置 electron-builder 输出 .exe / .dmg
+   - [ ] GitHub Actions 自动构建
+   - [ ] README 中的下载链接指向 Releases
+
+### P1 - 体验优化
+
+3. **库的一键安装**
+   - 解析 Processing Library Index
+   - 下载 .zip 并解压到 `resources/processing/`
+   - 替换当前的"打开文件夹"方案
+
+4. **资源优化**
+   - 使用 `jlink` 精简 JDK 体积
+   - 目标：整体安装包 < 200MB
+
+### P2 - 未来功能
+
+5. AI 代码助手
+6. 云端同步
+7. 内置示例库
+
+---
+
+## 📁 项目结构
+
+```
+entropic/
+├── electron/           # Electron 主进程
+│   ├── main.ts         # 主进程入口、IPC handlers
+│   └── preload.ts      # 预加载脚本
+├── src/                # React 前端
+│   ├── App.tsx         # 主应用组件
+│   ├── components/     # UI 组件
+│   └── main.tsx        # 前端入口
+├── resources/          # 内置资源
+│   ├── processing-core/  # Processing 核心库
+│   └── jdk/              # 各平台 JDK
+├── package.json        # 项目配置（name: entropic）
+└── README.md           # 项目介绍
+```
+
+---
+
+## 🔑 关键文件
+
+| 文件 | 说明 |
+|------|------|
+| `electron/main.ts` | Processing 运行逻辑、PDE→Java 转换、库检测 |
+| `src/App.tsx` | 主 UI、库状态显示 |
+| `src/components/Editor.tsx` | Monaco Editor 配置 |
+| `PROJECT_PLAN.md` | 完整的项目规划文档（技术栈、设计方向等） |
+
+---
+
+## 🚀 下一步任务
+
+**推荐从这里开始**：
+
+1. **复制项目到 GitHub 仓库位置**
+2. **更新 GitHub 用户名**（README 中的 `yourusername/entropic`）
+3. **提交初始版本**
+4. **实现文件管理系统**（这是当前最大的缺失功能）
+
+---
+
+## 💡 设计参考
+
+- **UX 参考**: Figma（简洁、下载即用）
+- **界面风格**: 暗色主题、现代设计
+- **目标**: 让设计师不需要懂命令行就能使用

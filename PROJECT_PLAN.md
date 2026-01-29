@@ -1,4 +1,4 @@
-# Processing IDE 非官方替代品 - 项目规划文档
+# Entropic - 项目规划文档
 
 ## 📋 项目概述
 

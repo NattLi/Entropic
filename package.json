@@ -1,7 +1,7 @@
 {
-    "name": "processing-ide-alternative",
+    "name": "entropic",
     "version": "0.1.0",
-    "description": "A designer and artist-friendly IDE for Processing",
+    "description": "Entropic - A modern alternative to Processing IDE",
     "author": "Your Name",
     "license": "MIT",
     "main": "dist-electron/main.js",
@@ -32,8 +32,8 @@
         "wait-on": "^7.2.0"
     },
     "build": {
-        "appId": "com.processing.ide-alternative",
-        "productName": "Processing Studio",
+        "appId": "com.entropic.ide",
+        "productName": "Entropic",
         "directories": {
             "output": "release"
         },
