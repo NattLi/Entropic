@@ -633,4 +633,377 @@ ipcMain.handle('open-library-folder', async () => {
     await shell.openPath(processingDir)
 })
 
+// ========= Sketchbook 文件管理 =========
+
+/**
+ * 获取 Sketchbook 根目录
+ * 默认路径：~/Documents/Entropic/sketches/
+ */
+function getSketchbookPath() {
+    const documentsPath = app.getPath('documents')
+    return path.join(documentsPath, 'Entropic', 'sketches')
+}
+
+/**
+ * 确保 Sketchbook 目录存在
+ */
+function ensureSketchbookExists() {
+    const sketchbookPath = getSketchbookPath()
+    if (!fs.existsSync(sketchbookPath)) {
+        fs.mkdirSync(sketchbookPath, { recursive: true })
+    }
+    return sketchbookPath
+}
+
+/**
+ * 默认代码模板
+ */
+const DEFAULT_CODE = `// 欢迎来到创意编程的世界！
+// Welcome to the world of creative coding!
+
+void setup() {
+  size(800, 600);
+  background(30);
+}
+
+void draw() {
+  // 用鼠标画彩色圆圈
+  // Draw colorful circles with mouse
+  fill(random(100, 255), random(100, 255), random(100, 255), 150);
+  noStroke();
+  circle(mouseX, mouseY, random(20, 50));
+}
+`
+
+// 获取所有 sketches
+ipcMain.handle('get-sketches', async () => {
+    try {
+        const sketchbookPath = ensureSketchbookExists()
+        const items = fs.readdirSync(sketchbookPath)
+
+        const sketches = []
+        for (const item of items) {
+            const itemPath = path.join(sketchbookPath, item)
+            const stat = fs.statSync(itemPath)
+
+            if (stat.isDirectory()) {
+                // 查找 .pde 文件
+                const pdeFile = path.join(itemPath, `${item}.pde`)
+                if (fs.existsSync(pdeFile)) {
+                    sketches.push({
+                        id: item,
+                        name: item,
+                        createdAt: stat.birthtime.getTime(),
+                        updatedAt: stat.mtime.getTime()
+                    })
+                }
+            }
+        }
+
+        // 按更新时间排序（最新的在前）
+        sketches.sort((a, b) => b.updatedAt - a.updatedAt)
+
+        return { success: true, sketches }
+    } catch (error) {
+        return { success: false, error: error.message, sketches: [] }
+    }
+})
+
+// 创建新 sketch
+ipcMain.handle('create-sketch', async (event, name) => {
+    try {
+        const sketchbookPath = ensureSketchbookExists()
+
+        // 清理名称（移除特殊字符，保留字母、数字、下划线和中文）
+        let safeName = name.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '_')
+
+        // Java 类名不能以数字开头，如果是数字开头则添加前缀
+        if (/^[0-9]/.test(safeName)) {
+            safeName = 'S_' + safeName
+        }
+
+        // 如果名称为空，使用默认名称
+        if (!safeName.trim()) {
+            safeName = 'Untitled'
+        }
+
+        const sketchDir = path.join(sketchbookPath, safeName)
+
+        // 检查是否已存在
+        if (fs.existsSync(sketchDir)) {
+            return { success: false, error: 'Sketch already exists' }
+        }
+
+        // 创建目录和文件
+        fs.mkdirSync(sketchDir, { recursive: true })
+        const pdeFile = path.join(sketchDir, `${safeName}.pde`)
+        fs.writeFileSync(pdeFile, DEFAULT_CODE, 'utf8')
+
+        const stat = fs.statSync(sketchDir)
+
+        return {
+            success: true,
+            sketch: {
+                id: safeName,
+                name: safeName,
+                createdAt: stat.birthtime.getTime(),
+                updatedAt: stat.mtime.getTime()
+            }
+        }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 保存 sketch
+ipcMain.handle('save-sketch', async (event, id, code) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const pdeFile = path.join(sketchbookPath, id, `${id}.pde`)
+
+        if (!fs.existsSync(path.dirname(pdeFile))) {
+            return { success: false, error: 'Sketch not found' }
+        }
+
+        fs.writeFileSync(pdeFile, code, 'utf8')
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 加载 sketch
+ipcMain.handle('load-sketch', async (event, id) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const pdeFile = path.join(sketchbookPath, id, `${id}.pde`)
+
+        if (!fs.existsSync(pdeFile)) {
+            return { success: false, error: 'Sketch not found' }
+        }
+
+        const code = fs.readFileSync(pdeFile, 'utf8')
+
+        return { success: true, code }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 删除 sketch
+ipcMain.handle('delete-sketch', async (event, id) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const sketchDir = path.join(sketchbookPath, id)
+
+        if (!fs.existsSync(sketchDir)) {
+            return { success: false, error: 'Sketch not found' }
+        }
+
+        // 递归删除目录
+        fs.rmSync(sketchDir, { recursive: true, force: true })
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 重命名 sketch
+ipcMain.handle('rename-sketch', async (event, oldId, newName) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const oldDir = path.join(sketchbookPath, oldId)
+
+        if (!fs.existsSync(oldDir)) {
+            return { success: false, error: 'Sketch not found' }
+        }
+
+        // 清理新名称
+        let safeName = newName.replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '_')
+        if (/^[0-9]/.test(safeName)) {
+            safeName = 'S_' + safeName
+        }
+        if (!safeName.trim()) {
+            return { success: false, error: 'Invalid name' }
+        }
+
+        const newDir = path.join(sketchbookPath, safeName)
+
+        // 检查新名称是否已存在
+        if (fs.existsSync(newDir) && oldId !== safeName) {
+            return { success: false, error: 'Name already exists' }
+        }
+
+        // 重命名目录
+        fs.renameSync(oldDir, newDir)
+
+        // 重命名 .pde 文件
+        const oldPde = path.join(newDir, `${oldId}.pde`)
+        const newPde = path.join(newDir, `${safeName}.pde`)
+        if (fs.existsSync(oldPde)) {
+            fs.renameSync(oldPde, newPde)
+        }
+
+        return { success: true, newId: safeName }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// ========================================
+// 变体草稿功能 (Variant Drafts)
+// ========================================
+
+// 获取变体列表
+ipcMain.handle('get-variants', async (event, sketchId) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const variantsDir = path.join(sketchbookPath, sketchId, '.variants')
+        const metaFile = path.join(sketchbookPath, sketchId, '.variants.json')
+
+        if (!fs.existsSync(variantsDir)) {
+            return { success: true, variants: [] }
+        }
+
+        // 读取元数据
+        let meta = { variants: [] }
+        if (fs.existsSync(metaFile)) {
+            meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
+        }
+
+        return { success: true, variants: meta.variants }
+    } catch (error) {
+        return { success: false, error: error.message, variants: [] }
+    }
+})
+
+// 暂存为新变体
+ipcMain.handle('stage-variant', async (event, sketchId, name) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const sketchDir = path.join(sketchbookPath, sketchId)
+        const variantsDir = path.join(sketchDir, '.variants')
+        const metaFile = path.join(sketchDir, '.variants.json')
+        const mainPde = path.join(sketchDir, `${sketchId}.pde`)
+
+        // 确保 .variants 目录存在
+        if (!fs.existsSync(variantsDir)) {
+            fs.mkdirSync(variantsDir, { recursive: true })
+        }
+
+        // 读取元数据
+        let meta = { variants: [] }
+        if (fs.existsSync(metaFile)) {
+            meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
+        }
+
+        // 生成新 ID
+        const nextNum = meta.variants.length + 1
+        const variantId = `v${nextNum}`
+
+        // 复制当前代码到变体
+        const variantFile = path.join(variantsDir, `${variantId}.pde`)
+        fs.copyFileSync(mainPde, variantFile)
+
+        // 更新元数据
+        meta.variants.push({
+            id: variantId,
+            name: name || `Stash ${nextNum}`,
+            timestamp: Date.now()
+        })
+        fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2))
+
+        return { success: true, variant: meta.variants[meta.variants.length - 1] }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 加载变体代码
+ipcMain.handle('load-variant', async (event, sketchId, variantId) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const variantFile = path.join(sketchbookPath, sketchId, '.variants', `${variantId}.pde`)
+
+        if (!fs.existsSync(variantFile)) {
+            return { success: false, error: 'Variant not found' }
+        }
+
+        const code = fs.readFileSync(variantFile, 'utf-8')
+        return { success: true, code }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 保存变体代码
+ipcMain.handle('save-variant', async (event, sketchId, variantId, code) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const variantFile = path.join(sketchbookPath, sketchId, '.variants', `${variantId}.pde`)
+
+        if (!fs.existsSync(variantFile)) {
+            return { success: false, error: 'Variant not found' }
+        }
+
+        fs.writeFileSync(variantFile, code, 'utf-8')
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 删除变体
+ipcMain.handle('delete-variant', async (event, sketchId, variantId) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const sketchDir = path.join(sketchbookPath, sketchId)
+        const variantFile = path.join(sketchDir, '.variants', `${variantId}.pde`)
+        const metaFile = path.join(sketchDir, '.variants.json')
+
+        // 删除文件
+        if (fs.existsSync(variantFile)) {
+            fs.unlinkSync(variantFile)
+        }
+
+        // 更新元数据
+        if (fs.existsSync(metaFile)) {
+            let meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
+            meta.variants = meta.variants.filter(v => v.id !== variantId)
+            fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2))
+        }
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 重命名变体
+ipcMain.handle('rename-variant', async (event, sketchId, variantId, newName) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const metaFile = path.join(sketchbookPath, sketchId, '.variants.json')
+
+        if (!fs.existsSync(metaFile)) {
+            return { success: false, error: 'Metadata not found' }
+        }
+
+        let meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
+        const variant = meta.variants.find(v => v.id === variantId)
+        if (!variant) {
+            return { success: false, error: 'Variant not found' }
+        }
+
+        variant.name = newName
+        fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2))
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
 app.whenReady().then(createWindow)

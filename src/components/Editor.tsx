@@ -21,11 +21,14 @@ void draw() {
 // @ts-ignore
 const Editor = forwardRef((props: any, ref: any) => {
     const editorRef = useRef<any>(null)
-    const { onChange } = props
+    const { onChange, defaultValue } = props
 
     useImperativeHandle(ref, () => ({
         getCode: () => {
             return editorRef.current?.getValue() || ''
+        },
+        setCode: (code: string) => {
+            editorRef.current?.setValue(code)
         }
     }))
 
@@ -72,7 +75,7 @@ const Editor = forwardRef((props: any, ref: any) => {
             <MonacoEditor
                 height="100%"
                 defaultLanguage="java"
-                defaultValue={DEFAULT_CODE}
+                defaultValue={defaultValue || DEFAULT_CODE}
                 onMount={handleEditorDidMount}
                 onChange={handleEditorChange}
                 options={{

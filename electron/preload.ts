@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+// Sketch 类型定义
+interface Sketch {
+    id: string;
+    name: string;
+    createdAt: number;
+    updatedAt: number;
+}
+
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -20,12 +28,35 @@ contextBridge.exposeInMainWorld('processingAPI', {
     },
     checkLibrary: (libName: string) => ipcRenderer.invoke('check-library', libName),
     openLibraryFolder: () => ipcRenderer.invoke('open-library-folder'),
+
+    // Sketchbook 文件管理 API
+    getSketches: () => ipcRenderer.invoke('get-sketches'),
+    createSketch: (name: string) => ipcRenderer.invoke('create-sketch', name),
+    saveSketch: (id: string, code: string) => ipcRenderer.invoke('save-sketch', id, code),
+    loadSketch: (id: string) => ipcRenderer.invoke('load-sketch', id),
+    deleteSketch: (id: string) => ipcRenderer.invoke('delete-sketch', id),
+    renameSketch: (oldId: string, newName: string) => ipcRenderer.invoke('rename-sketch', oldId, newName),
+
+    // 变体草稿 API
+    getVariants: (sketchId: string) => ipcRenderer.invoke('get-variants', sketchId),
+    stageVariant: (sketchId: string, name?: string) => ipcRenderer.invoke('stage-variant', sketchId, name),
+    loadVariant: (sketchId: string, variantId: string) => ipcRenderer.invoke('load-variant', sketchId, variantId),
+    saveVariant: (sketchId: string, variantId: string, code: string) => ipcRenderer.invoke('save-variant', sketchId, variantId, code),
+    deleteVariant: (sketchId: string, variantId: string) => ipcRenderer.invoke('delete-variant', sketchId, variantId),
+    renameVariant: (sketchId: string, variantId: string, newName: string) => ipcRenderer.invoke('rename-variant', sketchId, variantId, newName),
 })
 
 export { }
 
 // Type declarations for TypeScript
 declare global {
+    interface Sketch {
+        id: string;
+        name: string;
+        createdAt: number;
+        updatedAt: number;
+    }
+
     interface Window {
         electronAPI: {
             onMessage: (callback: (message: string) => void) => void
@@ -38,6 +69,22 @@ declare global {
             removeOutputListener: () => void
             checkLibrary: (libName: string) => Promise<boolean>
             openLibraryFolder: () => Promise<void>
+
+            // Sketchbook file management
+            getSketches: () => Promise<{ success: boolean; sketches: Sketch[]; error?: string }>
+            createSketch: (name: string) => Promise<{ success: boolean; sketch?: Sketch; error?: string }>
+            saveSketch: (id: string, code: string) => Promise<{ success: boolean; error?: string }>
+            loadSketch: (id: string) => Promise<{ success: boolean; code?: string; error?: string }>
+            deleteSketch: (id: string) => Promise<{ success: boolean; error?: string }>
+            renameSketch: (oldId: string, newName: string) => Promise<{ success: boolean; newId?: string; error?: string }>
+
+            // Variant stash management
+            getVariants: (sketchId: string) => Promise<{ success: boolean; variants: any[]; error?: string }>
+            stageVariant: (sketchId: string, name?: string) => Promise<{ success: boolean; variant?: any; error?: string }>
+            loadVariant: (sketchId: string, variantId: string) => Promise<{ success: boolean; code?: string; error?: string }>
+            saveVariant: (sketchId: string, variantId: string, code: string) => Promise<{ success: boolean; error?: string }>
+            deleteVariant: (sketchId: string, variantId: string) => Promise<{ success: boolean; error?: string }>
+            renameVariant: (sketchId: string, variantId: string, newName: string) => Promise<{ success: boolean; error?: string }>
         }
     }
 }

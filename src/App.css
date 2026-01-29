@@ -74,10 +74,22 @@
 }
 
 .btn-new {
-    width: 100%;
+    flex: 1;
     margin-top: var(--spacing-md);
     background: linear-gradient(135deg, var(--accent-secondary), #CC5577);
     color: white;
+}
+
+.btn-stash {
+    flex: 1;
+    margin-top: var(--spacing-md);
+    background: rgba(0, 212, 255, 0.15);
+    color: var(--accent-primary);
+    border: 1px solid var(--accent-primary);
+}
+
+.btn-stash:hover:not(:disabled) {
+    background: rgba(0, 212, 255, 0.3);
 }
 
 .btn-icon {
@@ -262,4 +274,113 @@
 .status-badge.success {
     background-color: rgba(0, 230, 118, 0.2);
     color: var(--accent-success);
+}
+
+/* Modal 弹窗 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal {
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    min-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--bg-tertiary);
+}
+
+.modal h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-lg) 0;
+}
+
+.modal input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.modal input:focus {
+    border-color: var(--accent-primary);
+}
+
+.modal input::placeholder {
+    color: var(--text-muted);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+}
+
+/* Context Menu (Right-click) */
+.context-menu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    min-width: 140px;
+    padding: 6px 0;
+    animation: fadeIn 0.15s ease;
+}
+
+.context-menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: background 0.15s;
+}
+
+.context-menu-item:hover {
+    background: var(--bg-tertiary);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Variant Items */
+.variant-item {
+    transition: background 0.15s, color 0.15s;
+    border-radius: var(--radius-sm);
+    margin: 2px 0;
+}
+
+.variant-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.variant-item.stage-btn:hover {
+    background: rgba(0, 212, 255, 0.1);
 }
