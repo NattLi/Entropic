@@ -27,6 +27,8 @@
 
 ### Why Entropic?
 
+| | Entropic | Official Processing IDE |
+|---|:---:|:---:|
 | 🎯 Modern UI | ✅ | ❌ |
 | ⚡ Instant Feedback | ✅ | ✅ |
 | 💫 Built for Designers | ✅ | ❌ |
@@ -237,6 +239,8 @@ Made with ❤️ for artists and designers
 
 ### 为什么选择 Entropic？
 
+| | Entropic | 官方 Processing IDE |
+|---|:---:|:---:|
 | 🎯 现代界面 | ✅ | ❌ |
 | ⚡ 即时反馈 | ✅ | ✅ |
 | 💫 为设计师打造 | ✅ | ❌ |
