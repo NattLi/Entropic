@@ -32,7 +32,7 @@
 | 🎯 Modern UI | ✅ | ❌ |
 | ⚡ Instant Feedback | ✅ | ✅ |
 | 💫 Built for Designers | ✅ | ❌ |
-| 🤖 AI Assistant (Coming Soon) | ✅ | ❌ |
+| 📦 Smart Lib Management | ✅ | ❌ |
 
 ---
 
@@ -70,20 +70,60 @@ Click the download button above, install, and open Entropic.
 Paste the following code into the editor:
 
 ```processing
+// ✨ Entropic - Order from Chaos
+// Meaning: Generating patterns from randomness
+
+float[] x, y;  // Position
+float[] angle; // Direction
+color[] c;     // Color
+int num = 1000; // Particle count
+
 void setup() {
   size(800, 600);
-  background(20);
+  background(10);
+  noStroke();
+  
+  x = new float[num];
+  y = new float[num];
+  angle = new float[num];
+  c = new color[num];
+  
+  for(int i=0; i<num; i++) {
+    x[i] = random(width);
+    y[i] = random(height);
+    angle[i] = random(TWO_PI);
+    // Neon colors born from chaos
+    c[i] = color(
+      random(50, 150),
+      random(100, 255),
+      255, 
+      100
+    );
+  }
 }
 
 void draw() {
-  // Semi-transparent background creates a trail effect
-  fill(20, 20, 20, 10);
+  // Semi-transparent background for trails
+  fill(10, 20);
   rect(0, 0, width, height);
-
-  // Draw circles following the mouse
-  fill(random(200, 255), random(100, 200), random(150, 255));
-  noStroke();
-  circle(mouseX, mouseY, random(10, 40));
+  
+  for(int i=0; i<num; i++) {
+    // Flow field based on Perlin Noise (Entropy)
+    float n = noise(x[i]*0.005, y[i]*0.005, frameCount*0.005);
+    angle[i] += map(n, 0, 1, -0.1, 0.1);
+    
+    x[i] += cos(angle[i]) * 2;
+    y[i] += sin(angle[i]) * 2;
+    
+    // Wrap around edges
+    if(x[i] < 0) x[i] = width;
+    if(x[i] > width) x[i] = 0;
+    if(y[i] < 0) y[i] = height;
+    if(y[i] > height) y[i] = 0;
+    
+    fill(c[i]);
+    circle(x[i], y[i], 2);
+  }
 }
 ```
 
@@ -127,8 +167,8 @@ Click the **▶️ Run** button, move your mouse, and see what happens!
 
 - [x] ✅ Basic Code Editor
 - [x] ✅ Processing Runtime
+- [x] ✅ Auto-Dependency Check & Install
 - [ ] 🔜 Built-in Example Library
-- [ ] 🔜 AI Code Assistant
 - [ ] 🔜 Cloud Sync
 
 ---
@@ -201,7 +241,7 @@ Made with ❤️ for artists and designers
 | 🎯 现代界面 | ✅ | ❌ |
 | ⚡ 即时反馈 | ✅ | ✅ |
 | 💫 为设计师打造 | ✅ | ❌ |
-| 🤖 AI 辅助（即将推出） | ✅ | ❌ |
+| 📦 智能依赖管理 | ✅ | ❌ |
 
 ---
 
@@ -296,8 +336,8 @@ void draw() {
 
 - [x] ✅ 基础代码编辑器
 - [x] ✅ Processing 代码运行
+- [x] ✅ 智能依赖检测与安装
 - [ ] 🔜 内置示例库
-- [ ] 🔜 AI 代码助手
 - [ ] 🔜 作品云端同步
 
 ---

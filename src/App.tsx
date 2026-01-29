@@ -18,21 +18,60 @@ interface Variant {
 }
 
 // 默认代码模板（仅在无任何 sketch 时显示）
-const WELCOME_CODE = `// 欢迎来到 Entropic！
-// Welcome to Entropic!
-// 
-// 点击左侧 "+ New Sketch" 创建你的第一个项目
-// Click "+ New Sketch" on the left to create your first project
+const WELCOME_CODE = `// ✨ Entropic - Order from Chaos
+// Meaning: Generating patterns from randomness
+
+float[] x, y;  // Position
+float[] angle; // Direction
+color[] c;     // Color
+int num = 1000; // Particle count
 
 void setup() {
   size(800, 600);
-  background(30);
+  background(10);
+  noStroke();
+  
+  x = new float[num];
+  y = new float[num];
+  angle = new float[num];
+  c = new color[num];
+  
+  for(int i=0; i<num; i++) {
+    x[i] = random(width);
+    y[i] = random(height);
+    angle[i] = random(TWO_PI);
+    // Neon colors born from chaos
+    c[i] = color(
+      random(50, 150),
+      random(100, 255),
+      255, 
+      100
+    );
+  }
 }
 
 void draw() {
-  fill(random(100, 255), random(100, 255), random(100, 255), 150);
-  noStroke();
-  circle(mouseX, mouseY, random(20, 50));
+  // Semi-transparent background for trails
+  fill(10, 20);
+  rect(0, 0, width, height);
+  
+  for(int i=0; i<num; i++) {
+    // Flow field based on Perlin Noise (Entropy)
+    float n = noise(x[i]*0.005, y[i]*0.005, frameCount*0.005);
+    angle[i] += map(n, 0, 1, -0.1, 0.1);
+    
+    x[i] += cos(angle[i]) * 2;
+    y[i] += sin(angle[i]) * 2;
+    
+    // Wrap around edges
+    if(x[i] < 0) x[i] = width;
+    if(x[i] > width) x[i] = 0;
+    if(y[i] < 0) y[i] = height;
+    if(y[i] > height) y[i] = 0;
+    
+    fill(c[i]);
+    circle(x[i], y[i], 2);
+  }
 }
 `
 
