@@ -27,12 +27,11 @@
 
 ### Why Entropic?
 
-| | Entropic | Official Processing IDE |
-|---|:---:|:---:|
 | 🎯 Modern UI | ✅ | ❌ |
 | ⚡ Instant Feedback | ✅ | ✅ |
 | 💫 Built for Designers | ✅ | ❌ |
 | 📦 Smart Lib Management | ✅ | ❌ |
+| 🔖 Variant/Stash System | ✅ | ❌ |
 
 ---
 
@@ -168,6 +167,8 @@ Click the **▶️ Run** button, move your mouse, and see what happens!
 - [x] ✅ Basic Code Editor
 - [x] ✅ Processing Runtime
 - [x] ✅ Auto-Dependency Check & Install
+- [x] ✅ Variant System (Stash & Restore)
+- [x] ✅ Reveal in Folder
 - [ ] 🔜 Built-in Example Library
 - [ ] 🔜 Cloud Sync
 
@@ -236,12 +237,11 @@ Made with ❤️ for artists and designers
 
 ### 为什么选择 Entropic？
 
-| | Entropic | 官方 Processing IDE |
-|---|:---:|:---:|
 | 🎯 现代界面 | ✅ | ❌ |
 | ⚡ 即时反馈 | ✅ | ✅ |
 | 💫 为设计师打造 | ✅ | ❌ |
 | 📦 智能依赖管理 | ✅ | ❌ |
+| 🔖 变体/快照系统 | ✅ | ❌ |
 
 ---
 
@@ -337,6 +337,8 @@ void draw() {
 - [x] ✅ 基础代码编辑器
 - [x] ✅ Processing 代码运行
 - [x] ✅ 智能依赖检测与安装
+- [x] ✅ 变体系统 (Stash & Restore)
+- [x] ✅ 在文件夹中显示
 - [ ] 🔜 内置示例库
 - [ ] 🔜 作品云端同步
 

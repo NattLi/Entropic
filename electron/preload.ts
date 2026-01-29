@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('processingAPI', {
     saveVariant: (sketchId: string, variantId: string, code: string) => ipcRenderer.invoke('save-variant', sketchId, variantId, code),
     deleteVariant: (sketchId: string, variantId: string) => ipcRenderer.invoke('delete-variant', sketchId, variantId),
     renameVariant: (sketchId: string, variantId: string, newName: string) => ipcRenderer.invoke('rename-variant', sketchId, variantId, newName),
+    restoreVariant: (sketchId: string, variantId: string) => ipcRenderer.invoke('restore-variant', sketchId, variantId),
+    showItemInFolder: (sketchId: string, itemId?: string) => ipcRenderer.invoke('show-item-in-folder', sketchId, itemId),
 })
 
 export { }
@@ -84,7 +86,9 @@ declare global {
             loadVariant: (sketchId: string, variantId: string) => Promise<{ success: boolean; code?: string; error?: string }>
             saveVariant: (sketchId: string, variantId: string, code: string) => Promise<{ success: boolean; error?: string }>
             deleteVariant: (sketchId: string, variantId: string) => Promise<{ success: boolean; error?: string }>
-            renameVariant: (sketchId: string, variantId: string, newName: string) => Promise<{ success: boolean; error?: string }>
+            renameVariant: (sketchId: string, variantId?: string, newName?: string) => Promise<{ success: boolean; error?: string }>
+            restoreVariant: (sketchId: string, variantId: string) => Promise<{ success: boolean; error?: string }>
+            showItemInFolder: (sketchId: string, itemId?: string) => Promise<{ success: boolean; error?: string }>
         }
     }
 }

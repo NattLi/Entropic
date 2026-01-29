@@ -101,10 +101,24 @@ function App() {
     const [variantRenameValue, setVariantRenameValue] = useState('')
     // 当前活动的 stash (null = 编辑主文件)
     const [activeVariantId, setActiveVariantId] = useState<string | null>(null)
+    const [unsavedWorkingCopyBuffer, setUnsavedWorkingCopyBuffer] = useState<Map<string, string>>(new Map()) // 暂存未保存的 Working Copy
+    const [isTransitioning, setIsTransitioning] = useState(false) // 切换过渡状态
+
+    // Toast Notification
+    const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
+    const toastTimerRef = useRef<any>(null)
+
+    const showToast = (message: string) => {
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+        setToast({ message, visible: true })
+        toastTimerRef.current = setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }))
+        }, 1500)
+    }
 
     /**
      * 生成默认 Sketch 名称
-     * 格式: YYYYMMDD_XX (例如: 20260129_01)
+     * 格式: S_YYYYMMDD_XX (例如: S_20260129_01)
      */
     const generateDefaultName = useCallback(() => {
         const now = new Date()
@@ -112,20 +126,28 @@ function App() {
         const month = String(now.getMonth() + 1).padStart(2, '0')
         const day = String(now.getDate()).padStart(2, '0')
         const dateStr = `${year}${month}${day}`
-        const prefix = `${dateStr}_`
+        const prefix = `S_${dateStr}_`
 
         // 查找今天已有的 sketch 数量，确定序号
-        const todaySketches = sketches.filter(s => s.name.startsWith(prefix))
+        // 匹配格式: S_YYYYMMDD_XX
         let maxNum = 0
-        todaySketches.forEach(s => {
+        sketches.forEach(s => {
             const match = s.name.match(new RegExp(`^${prefix}(\\d+)$`))
             if (match) {
                 maxNum = Math.max(maxNum, parseInt(match[1], 10))
             }
         })
 
-        const nextNum = String(maxNum + 1).padStart(2, '0')
-        return `${prefix}${nextNum}`
+        let nextNum = maxNum + 1
+        let candidateName = `${prefix}${String(nextNum).padStart(2, '0')}`
+
+        // 双重保险：确保生成的名称真的不存在
+        while (sketches.some(s => s.name === candidateName)) {
+            nextNum++
+            candidateName = `${prefix}${String(nextNum).padStart(2, '0')}`
+        }
+
+        return candidateName
     }, [sketches])
 
     // 加载 Sketchbook
@@ -275,6 +297,10 @@ function App() {
 
             // 选中新创建的 sketch
             setCurrentSketch(result.sketch)
+            setActiveVariantId(null) // 明确进入 Working Copy
+
+            // 自动展开新创建的项目
+            setExpandedSketches(prev => new Set(prev).add(result.sketch!.id))
 
             // 加载代码
             const loadResult = await window.processingAPI.loadSketch(result.sketch.id)
@@ -391,16 +417,70 @@ function App() {
     const handleLoadVariant = async (sketchId: string, variantId: string) => {
         if (!window.processingAPI || !editorRef.current) return
 
+        // 确保 currentSketch 是对的 (防止跨项目点击变体导致的错乱)
+        if (currentSketch?.id !== sketchId) {
+            const sketch = sketches.find(s => s.id === sketchId)
+            if (sketch) setCurrentSketch(sketch)
+        }
+
+        // 如果当前是在 Working Copy，且有未保存更改，先暂存到 buffer
+        if (activeVariantId === null && currentSketch?.id === sketchId && editorRef.current) {
+            const currentCode = editorRef.current.getCode()
+            setUnsavedWorkingCopyBuffer(prev => new Map(prev).set(sketchId, currentCode))
+            console.log('Buffered unsaved working copy')
+        }
+
+        setIsTransitioning(true)
+        // 给一个短暂的延时，让模糊动画生效，也给用户一种"加载切换"的实感
+        await new Promise(resolve => setTimeout(resolve, 400))
+
         const result = await (window.processingAPI as any).loadVariant(sketchId, variantId)
         if (result.success) {
             editorRef.current.setCode(result.code)
             setActiveVariantId(variantId) // 设置当前活动 stash
-            setHasUnsavedChanges(false) // 刚加载的代码是已保存状态
-            addToConsole(`📖 Editing stash ${variantId}`, 'success')
+
+            // 强制重置未保存状态，防止 onChange 竞态导致误判
+            setTimeout(() => setHasUnsavedChanges(false), 50)
+
+            // 查找变体名称用于提示
+            const variantName = variants.get(sketchId)?.find(v => v.id === variantId)?.name || variantId
+
+            addToConsole(`📖 Viewing stash "${variantName}"`, 'success')
+            showToast(`📖 Viewing "${variantName}"`)
         } else {
             addToConsole(`Failed to load stash: ${result.error}`, 'error')
         }
+
+        // 稍作延迟再移除模糊，确保界面已更新
+        setTimeout(() => setIsTransitioning(false), 200)
     }
+
+    // 恢复 stash 到主文件
+    const handleRestoreStash = async () => {
+        if (!currentSketch || !activeVariantId || !window.processingAPI || !editorRef.current) return
+
+        const confirmed = window.confirm(`Restore "${activeVariantId}" to Working Copy? This will overwrite the current main code.`)
+        if (!confirmed) return
+
+        const result = await (window.processingAPI as any).restoreVariant(currentSketch.id, activeVariantId)
+        if (result.success) {
+            // 清除 buffer，因为用户选择覆盖
+            setUnsavedWorkingCopyBuffer(prev => {
+                const next = new Map(prev)
+                next.delete(currentSketch.id)
+                return next
+            })
+
+            // 恢复后重新加载主文件 (Working Copy)
+            await handleSelectSketch(currentSketch)
+            showToast('♻️ Restored to Working Copy')
+            addToConsole(`♻️ Restored stash "${activeVariantId}" to Working Copy`, 'success')
+        } else {
+            addToConsole(`Failed to restore: ${result.error}`, 'error')
+        }
+    }
+
+
 
     // 删除变体
     const handleDeleteVariant = async (sketchId: string, variantId: string, e: React.MouseEvent) => {
@@ -450,7 +530,13 @@ function App() {
 
     // 切换 sketch
     const handleSelectSketch = async (sketch: Sketch) => {
-        if (currentSketch?.id === sketch.id) return
+        // 如果点击的是当前 sketch 的 Working Copy (即 activeVariantId 为 null 时再次点击)，不做任何事
+        if (currentSketch?.id === sketch.id && activeVariantId === null) return
+
+        // 如果是从 variant 切换回 main (同一个 sketch)，提示
+        if (currentSketch?.id === sketch.id && activeVariantId !== null) {
+            showToast('🏠 Returned to Working Copy')
+        }
 
         // 如果有未保存的更改，提示保存
         if (hasUnsavedChanges && currentSketch) {
@@ -460,17 +546,41 @@ function App() {
             }
         }
 
-        setCurrentSketch(sketch)
-        setActiveVariantId(null) // 切换 sketch 时回到编辑主文件
+        setIsTransitioning(true)
+        await new Promise(resolve => setTimeout(resolve, 400))
 
         // 加载代码
         if (window.processingAPI) {
-            const result = await window.processingAPI.loadSketch(sketch.id)
-            if (result.success && result.code && editorRef.current) {
-                editorRef.current.setCode(result.code)
-                setHasUnsavedChanges(false)
+            // 检查是否有 buffer
+            if (unsavedWorkingCopyBuffer.has(sketch.id)) {
+                // 有暂存的未保存代码，优先加载
+                const bufferedCode = unsavedWorkingCopyBuffer.get(sketch.id)!
+                if (editorRef.current) {
+                    editorRef.current.setCode(bufferedCode)
+                    setHasUnsavedChanges(true) // 标记为未保存
+
+                    setCurrentSketch(sketch)
+                    setActiveVariantId(null)
+
+                    showToast('📝 Resumed edits')
+                }
+            } else {
+                // 没有 buffer，从硬盘加载
+                const result = await window.processingAPI.loadSketch(sketch.id)
+                if (result.success && result.code && editorRef.current) {
+                    editorRef.current.setCode(result.code)
+                    setHasUnsavedChanges(false)
+
+                    setCurrentSketch(sketch) // 成功加载后再切换状态
+                    setActiveVariantId(null) // 切换 sketch 时回到编辑主文件
+                } else {
+                    addToConsole(`Failed to load working copy: ${result.error}`, 'error')
+                    return // 如果加载失败，中断切换
+                }
             }
         }
+
+        setTimeout(() => setIsTransitioning(false), 200)
     }
 
     const handleRun = async () => {
@@ -588,6 +698,7 @@ function App() {
                                             menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
                                             menu.innerHTML = `
                                                 <div class="context-menu-item" data-action="rename">✏️ Rename</div>
+                                                <div class="context-menu-item" data-action="reveal">📂 Reveal in Folder</div>
                                                 <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
                                             `
                                             document.body.appendChild(menu)
@@ -596,6 +707,7 @@ function App() {
                                                 const action = target.dataset.action
                                                 if (action === 'rename') handleStartRename(sketch, e as any)
                                                 else if (action === 'delete') handleDeleteSketch(sketch, e as any)
+                                                else if (action === 'reveal') window.processingAPI.showItemInFolder(sketch.id)
                                                 menu.remove()
                                                 document.removeEventListener('click', handleClick)
                                             }
@@ -641,15 +753,23 @@ function App() {
                                     {/* 变体列表（手风琴展开） */}
                                     {expandedSketches.has(sketch.id) && (
                                         <div className="variants-list" style={{ paddingLeft: '20px' }}>
-                                            {/* Working 状态 */}
-                                            {currentSketch?.id === sketch.id && hasUnsavedChanges && (
-                                                <div className="variant-item working" style={{
-                                                    padding: '6px 10px', fontSize: '13px', opacity: 0.8,
-                                                    color: 'var(--accent-secondary)'
-                                                }}>
-                                                    ├─ Working ●
-                                                </div>
-                                            )}
+                                            {/* Working Copy (主文件) 固定项 */}
+                                            <div
+                                                className={`variant-item ${activeVariantId === null ? 'active' : ''}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleSelectSketch(sketch)
+                                                }}
+                                                style={{
+                                                    padding: '6px 10px', fontSize: '13px',
+                                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                                    fontWeight: activeVariantId === null ? 600 : 400,
+                                                    color: activeVariantId === null ? 'var(--accent-primary)' : 'inherit',
+                                                    borderLeft: activeVariantId === null ? '2px solid var(--accent-primary)' : '2px solid transparent'
+                                                }}
+                                            >
+                                                <span style={{ flex: 1 }}>📝 Working Copy</span>
+                                            </div>
 
                                             {/* 变体列表 */}
                                             {(variants.get(sketch.id) || []).map(variant => (
@@ -658,7 +778,11 @@ function App() {
                                                     className={`variant-item ${activeVariantId === variant.id ? 'active' : ''}`}
                                                     style={{
                                                         padding: '6px 10px', fontSize: '13px',
-                                                        cursor: 'pointer', display: 'flex', alignItems: 'center'
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                                        fontWeight: activeVariantId === variant.id ? 600 : 400,
+                                                        color: activeVariantId === variant.id ? 'var(--accent-success)' : 'inherit',
+                                                        borderLeft: activeVariantId === variant.id ? '2px solid var(--accent-success)' : '2px solid transparent',
+                                                        background: activeVariantId === variant.id ? 'rgba(0, 230, 118, 0.1)' : 'transparent'
                                                     }}
                                                     onClick={() => handleLoadVariant(sketch.id, variant.id)}
                                                     onDoubleClick={(e) => handleStartRenameVariant(sketch.id, variant.id, variant.name, e)}
@@ -670,6 +794,7 @@ function App() {
                                                         menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
                                                         menu.innerHTML = `
                                                             <div class="context-menu-item" data-action="rename">✏️ Rename</div>
+                                                            <div class="context-menu-item" data-action="reveal">📂 Reveal in Folder</div>
                                                             <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
                                                         `
                                                         document.body.appendChild(menu)
@@ -678,6 +803,7 @@ function App() {
                                                             const action = target.dataset.action
                                                             if (action === 'rename') handleStartRenameVariant(sketch.id, variant.id, variant.name, e as any)
                                                             else if (action === 'delete') handleDeleteVariant(sketch.id, variant.id, e as any)
+                                                            else if (action === 'reveal') window.processingAPI.showItemInFolder(sketch.id, variant.id)
                                                             menu.remove()
                                                             document.removeEventListener('click', handleClick)
                                                         }
@@ -704,7 +830,7 @@ function App() {
                                                             }}
                                                         />
                                                     ) : (
-                                                        <span style={{ flex: 1 }}>├─ {variant.id}: {variant.name}</span>
+                                                        <span style={{ flex: 1 }}>├─ {variant.name}</span>
                                                     )}
                                                 </div>
                                             ))}
@@ -719,26 +845,84 @@ function App() {
                         <button className="btn btn-new" onClick={handleCreateSketch}>
                             + New Sketch
                         </button>
-                        <button
-                            className="btn btn-stash"
-                            onClick={handleStageVariant}
-                            disabled={!currentSketch}
-                            title="Stash current code"
-                        >
-                            + Stash
-                        </button>
                     </div>
                 </div>
 
                 {/* Center: Editor + Console (Vertical Split) */}
                 <div className="center-panel">
                     {/* Editor */}
-                    <div className="editor-container">
+                    <div
+                        className="editor-container"
+                        style={{
+                            transition: 'filter 0.6s ease, opacity 0.6s ease',
+                            filter: isTransitioning ? 'blur(6px)' : 'none',
+                            opacity: isTransitioning ? 0.8 : 1,
+                            pointerEvents: isTransitioning ? 'none' : 'auto'
+                        }}
+                    >
                         <Editor
                             ref={editorRef}
                             onChange={handleEditorChange}
                             defaultValue={sketches.length === 0 ? WELCOME_CODE : undefined}
                         />
+
+                        {/* Toast Notification */}
+                        <div style={{
+                            position: 'absolute',
+                            top: '50px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(30, 30, 46, 0.9)',
+                            border: '1px solid var(--accent-primary)',
+                            color: 'var(--accent-primary)',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            zIndex: 100,
+                            pointerEvents: 'none',
+                            transition: 'opacity 0.3s ease, transform 0.3s ease',
+                            opacity: toast.visible ? 1 : 0,
+                            marginTop: toast.visible ? '0' : '-10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                            fontSize: '14px',
+                            fontWeight: 500
+                        }}>
+                            {toast.message}
+                        </div>
+
+                        <button
+                            className="btn btn-floating-stash"
+                            onClick={activeVariantId ? handleRestoreStash : handleStageVariant}
+                            disabled={!currentSketch}
+                            title={activeVariantId ? "Restore this stash to Working Copy" : "Stash this version"}
+                            style={{
+                                position: 'absolute',
+                                top: '10px',
+                                right: '20px',
+                                zIndex: 10,
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                background: activeVariantId ? 'rgba(0, 230, 118, 0.1)' : 'rgba(0, 212, 255, 0.1)',
+                                border: activeVariantId ? '1px solid var(--accent-success)' : '1px solid var(--accent-primary)',
+                                color: activeVariantId ? 'var(--accent-success)' : 'var(--accent-primary)',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                opacity: 0.8
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.opacity = '1'
+                                e.currentTarget.style.background = activeVariantId ? 'rgba(0, 230, 118, 0.2)' : 'rgba(0, 212, 255, 0.2)'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '0.8'
+                                e.currentTarget.style.background = activeVariantId ? 'rgba(255, 100, 100, 0.1)' : 'rgba(0, 212, 255, 0.1)'
+                            }}
+                        >
+                            {activeVariantId ? '↺ Restore this stash' : '+ Stash this version'}
+                        </button>
                     </div>
 
                     {/* Console */}

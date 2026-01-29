@@ -172,6 +172,7 @@
     flex-direction: column;
     background-color: var(--bg-primary);
     min-height: 0;
+    position: relative;
     /* Important for flex child scrolling */
 }
 

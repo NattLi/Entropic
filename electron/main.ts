@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, protocol, shell } = require('electron')
 const path = require('path')
 const { spawn, execFile } = require('child_process')
 const fs = require('fs')
@@ -437,7 +437,7 @@ function createWindow() {
 
     if (VITE_DEV_SERVER_URL) {
         win.loadURL(VITE_DEV_SERVER_URL)
-        win.webContents.openDevTools()
+        // win.webContents.openDevTools() // Manually open via Ctrl+Shift+I or F12 if needed
     } else {
         win.loadFile(path.join(process.env.DIST, 'index.html'))
     }
@@ -903,6 +903,24 @@ ipcMain.handle('stage-variant', async (event, sketchId, name) => {
         const nextNum = meta.variants.length + 1
         const variantId = `v${nextNum}`
 
+        // 生成时间戳 mmdd_HHmmss
+        const now = new Date()
+        const mm = String(now.getMonth() + 1).padStart(2, '0')
+        const dd = String(now.getDate()).padStart(2, '0')
+        const HH = String(now.getHours()).padStart(2, '0')
+        const min = String(now.getMinutes()).padStart(2, '0')
+        const ss = String(now.getSeconds()).padStart(2, '0')
+        // const timestampStr = `${mm}${dd}_${HH}${min}${ss}`
+        // 用户请求 "mmdd_mmss"，但通常分钟秒是不够唯一的，我们保留小时以防万一，
+        // 或者用户指的是 MonthDay_MinuteSecondS?
+        // 让我们假设是 MMdd_HHmmss 以确保唯一性且符合直觉.
+        // 但如果用户强调 "mmss" (minutes seconds)，可能他想要更短的？
+        // Stash_[No]_mmdd_mmss -> Stash_1_0129_160230 (16:02:30)
+        // 这样比较合理。
+        const timeStr = `${mm}${dd}_${HH}${min}${ss}`
+
+        const defaultName = `Stash_${nextNum}_${timeStr}`
+
         // 复制当前代码到变体
         const variantFile = path.join(variantsDir, `${variantId}.pde`)
         fs.copyFileSync(mainPde, variantFile)
@@ -910,7 +928,7 @@ ipcMain.handle('stage-variant', async (event, sketchId, name) => {
         // 更新元数据
         meta.variants.push({
             id: variantId,
-            name: name || `Stash ${nextNum}`,
+            name: name || defaultName,
             timestamp: Date.now()
         })
         fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2))
@@ -978,6 +996,58 @@ ipcMain.handle('delete-variant', async (event, sketchId, variantId) => {
         return { success: true }
     } catch (error) {
         return { success: false, error: error.message }
+    }
+})
+
+// 恢复变体到主文件 (Backup/Restore Model)
+ipcMain.handle('restore-variant', async (event, sketchId, variantId) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        const sketchDir = path.join(sketchbookPath, sketchId)
+        const mainPde = path.join(sketchDir, `${sketchId}.pde`)
+        const variantFile = path.join(sketchDir, '.variants', `${variantId}.pde`)
+
+        if (!fs.existsSync(variantFile)) {
+            return { success: false, error: 'Variant not found' }
+        }
+
+        // 读取变体内容
+        const code = fs.readFileSync(variantFile, 'utf-8')
+
+        // 覆盖主文件
+        fs.writeFileSync(mainPde, code, 'utf-8')
+
+        return { success: true }
+    } catch (error) {
+        return { success: false, error: 'unknown' /* error.message */ }
+    }
+})
+
+// 在文件管理器中显示
+ipcMain.handle('show-item-in-folder', async (event, sketchId, itemId) => {
+    try {
+        const sketchbookPath = getSketchbookPath()
+        let targetPath = ''
+
+        if (!itemId) {
+            // 如果只有 sketchId，打开 Sketch 文件夹
+            targetPath = path.join(sketchbookPath, sketchId)
+        } else if (itemId.startsWith('Stash_') || itemId.startsWith('v')) {
+            // 如果是 variant/stash
+            targetPath = path.join(sketchbookPath, sketchId, '.variants', `${itemId}.pde`)
+        } else {
+            // 默认打开 Sketch 文件夹
+            targetPath = path.join(sketchbookPath, sketchId)
+        }
+
+        if (fs.existsSync(targetPath)) {
+            shell.showItemInFolder(targetPath)
+            return { success: true }
+        } else {
+            return { success: false, error: 'File not found' }
+        }
+    } catch (error) {
+        return { success: false, error: 'unknown' /* error.message */ }
     }
 })
 

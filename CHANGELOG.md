@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Standalone Build Support**: Bundled JDK (Windows/Mac) and Processing Core libraries resources.
 - **Library Auto-Detection**: Real-time parsing of `import` statements with UI feedback ("Installed" or "Install").
 - **Mac Compatibility**: Verified cross-platform resource bundling.
+- **Variant Stash System**:
+    - Replaced "Git Branching" model with "Backup/Restore" model (`main.pde` is Working Copy).
+    - Added floating "Stash / Restore" button.
+    - Added accordion UI for managing stashes.
+    - Added rename/delete context menus for stashes.
+    - Added blur transparency transition effects (0.6s) for context switching.
+- **Reveal in Folder**: Added context menu option to open Sketches and Stashes in system file explorer.
+- **Safety**: Added unsaved changes buffer to prevent data loss when switching between views.
 - Initial project setup with Electron + React + TypeScript + Vite
 - Monaco Editor integration for code editing
 - Processing 4.x core integration with Java compilation

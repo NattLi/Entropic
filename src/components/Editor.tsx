@@ -32,10 +32,8 @@ const Editor = forwardRef((props: any, ref: any) => {
         }
     }))
 
-    const handleEditorDidMount = (editor: any, monaco: any) => {
-        editorRef.current = editor
-
-        // 配置 Monaco Editor 主题和选项
+    const handleEditorWillMount = (monaco: any) => {
+        // 配置 Monaco Editor 主题 -在此处定义以避免加载时的闪烁
         monaco.editor.defineTheme('creativity-dark', {
             base: 'vs-dark',
             inherit: true,
@@ -47,9 +45,9 @@ const Editor = forwardRef((props: any, ref: any) => {
                 { token: 'type', foreground: '50FA7B' },
             ],
             colors: {
-                'editor.background': '#1A1A28',
+                'editor.background': '#1E1E2E',
                 'editor.foreground': '#E0E0E0',
-                'editor.lineHighlightBackground': '#2A2A3E',
+                'editor.lineHighlightBackground': '#1E1E2E', // 与背景一致，避免首行"底色不对"的视觉问题
                 'editorLineNumber.foreground': '#6B6B7B',
                 'editorLineNumber.activeForeground': '#00D9FF',
                 'editor.selectionBackground': '#363650',
@@ -57,7 +55,10 @@ const Editor = forwardRef((props: any, ref: any) => {
                 'editorIndentGuide.activeBackground': '#00D9FF',
             },
         })
-        monaco.editor.setTheme('creativity-dark')
+    }
+
+    const handleEditorDidMount = (editor: any) => {
+        editorRef.current = editor
     }
 
     const handleEditorChange = (value: string | undefined) => {
@@ -68,14 +69,13 @@ const Editor = forwardRef((props: any, ref: any) => {
 
     return (
         <div className="editor-wrapper">
-            <div className="editor-header">
-                <span className="editor-title">🎨 Welcome.pde</span>
-                <span className="editor-status">Unsaved</span>
-            </div>
+
             <MonacoEditor
                 height="100%"
                 defaultLanguage="java"
                 defaultValue={defaultValue || DEFAULT_CODE}
+                theme="creativity-dark"
+                beforeMount={handleEditorWillMount}
                 onMount={handleEditorDidMount}
                 onChange={handleEditorChange}
                 options={{
@@ -94,7 +94,7 @@ const Editor = forwardRef((props: any, ref: any) => {
                     // 简化界面
                     minimap: { enabled: false },
                     lineNumbers: 'on',
-                    renderLineHighlight: 'all',
+                    renderLineHighlight: 'none', // 彻底关闭行高亮渲染
                     smoothScrolling: true,
 
                     // 辅助功能
