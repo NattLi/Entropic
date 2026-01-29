@@ -4,6 +4,175 @@
 
 ### A modern alternative to Processing IDE
 
+**Creative Coding: Order born from Chaos**
+
+![Entropic](https://img.shields.io/badge/Processing-4.x-blue?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Alpha-orange?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+
+*Entropy + Picture = Entropic*
+
+[**Download Entropic**](#-download) · [Learn More](#-what-is-it)
+
+</div>
+
+---
+
+## 🎨 What is it?
+
+**Entropic** is a modern Processing IDE tailored for designers and artists.
+
+> **Entropy** represents chaos and randomness, while creative coding is the essence of creating order from chaos.
+> **Entropic = Entropy + Picture**, using code to draw images born from chaos.
+
+### Why Entropic?
+
+| | Entropic | Official Processing IDE |
+|---|:---:|:---:|
+| 🎯 Modern UI | ✅ | ❌ |
+| ⚡ Instant Feedback | ✅ | ✅ |
+| 💫 Built for Designers | ✅ | ❌ |
+| 🤖 AI Assistant (Coming Soon) | ✅ | ❌ |
+
+---
+
+## 📥 Download
+
+<div align="center">
+
+### 🚧 Under Development
+
+**First release is coming soon!**
+
+Want to try the latest development build? Clone the repository and run locally:
+
+```bash
+git clone https://github.com/NattLi/Entropic.git
+cd Entropic
+npm install
+npm run dev
+```
+
+</div>
+
+> 💡 Once officially released, **download and run**, no dependencies required—start creating instantly!
+
+---
+
+## 🚀 Start Creating in 3 Minutes
+
+### 1️⃣ Download & Install
+
+Click the download button above, install, and open Entropic.
+
+### 2️⃣ Try This
+
+Paste the following code into the editor:
+
+```processing
+void setup() {
+  size(800, 600);
+  background(20);
+}
+
+void draw() {
+  // Semi-transparent background creates a trail effect
+  fill(20, 20, 20, 10);
+  rect(0, 0, width, height);
+
+  // Draw circles following the mouse
+  fill(random(200, 255), random(100, 200), random(150, 255));
+  noStroke();
+  circle(mouseX, mouseY, random(10, 40));
+}
+```
+
+### 3️⃣ Click Run
+
+Click the **▶️ Run** button, move your mouse, and see what happens!
+
+---
+
+## 💡 What Can You Do?
+
+| Use Case | Description |
+|------|------|
+| 🎨 **Generative Art** | Create unique visual works |
+| 🎮 **Interactive Installations** | Make your work react to mouse and keyboard input |
+| 📊 **Motion Graphics** | Create animations and data visualizations |
+| 🧪 **Creative Experiments** | Quickly prototype visual ideas |
+
+---
+
+## 🌟 Interface Preview
+
+```
+┌─────────────────────────────────────────┐
+│  ✨ Entropic           ▶️ Run  🛑 Stop  │
+├──────┬──────────────────────┬───────────┤
+│      │                      │  📚 Res   │
+│ 📁   │   🎨 Code Editor       │           │
+│ My   │                      │  Sound ✓  │
+│ Works│   (Write code here...) │  Video ✓  │
+│      │                      │           │
+│      ├──────────────────────┤           │
+│      │  📊 Console           │           │
+│      │  (Output here)        │           │
+└──────┴──────────────────────┴───────────┘
+```
+
+---
+
+## 🎯 Roadmap
+
+- [x] ✅ Basic Code Editor
+- [x] ✅ Processing Runtime
+- [ ] 🔜 Built-in Example Library
+- [ ] 🔜 AI Code Assistant
+- [ ] 🔜 Cloud Sync
+
+---
+
+## 🤝 Contribution
+
+Contributions of all kinds are welcome:
+
+- 🎨 **Designers**: UI/UX suggestions
+- 📝 **Writers**: Documentation and tutorials
+- 💻 **Developers**: Code contributions
+
+---
+
+## 📄 License
+
+MIT License - Free to use, modify, and share
+
+---
+
+<div align="center">
+
+**Creating order from chaos, drawing images with code** ✨
+
+Made with ❤️ for artists and designers
+
+[Get Started](#-download) · [Report Issue](https://github.com/NattLi/Entropic/issues)
+
+</div>
+
+<br>
+<br>
+<br>
+
+---
+
+# (Chinese Version)
+
+# ✨ Entropic
+
+<div align="center">
+
+### A modern alternative to Processing IDE
+
 **创意编程，从混沌中诞生秩序**
 
 ![Entropic](https://img.shields.io/badge/Processing-4.x-blue?style=for-the-badge)
