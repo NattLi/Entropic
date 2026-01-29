@@ -100,10 +100,11 @@ entropic/
 
 **推荐从这里开始**：
 
-1. **复制项目到 GitHub 仓库位置**
-2. **更新 GitHub 用户名**（README 中的 `yourusername/entropic`）
-3. **提交初始版本**
+1. ~~复制项目到 GitHub 仓库位置~~ ✅
+2. ~~更新 GitHub 用户名~~ ✅ (README 已更新为 NattLi)
+3. **提交初始版本到 GitHub**
 4. **实现文件管理系统**（这是当前最大的缺失功能）
+5. **发布首个 Release**（配置 electron-builder）
 
 ---
 

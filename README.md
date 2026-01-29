@@ -40,16 +40,22 @@
 
 <div align="center">
 
-### 选择你的平台
+### 🚧 开发中
 
-| Windows | macOS |
-|:-------:|:-----:|
-| [**下载 .exe**](https://github.com/yourusername/entropic/releases/latest) | [**下载 .dmg**](https://github.com/yourusername/entropic/releases/latest) |
-| Windows 10/11 | macOS 12+ |
+**首个发布版本即将推出！**
+
+想要体验最新开发版本？克隆仓库并本地运行：
+
+```bash
+git clone https://github.com/NattLi/Entropic.git
+cd Entropic
+npm install
+npm run dev
+```
 
 </div>
 
-> 💡 **下载即用**，无需安装任何依赖，打开就能开始创作！
+> 💡 正式版发布后，**下载即用**，无需安装任何依赖，打开就能开始创作！
 
 ---
 
@@ -149,6 +155,6 @@ MIT License - 自由使用、修改、分享
 
 Made with ❤️ for artists and designers
 
-[下载 Entropic](#-下载) · [报告问题](https://github.com/yourusername/entropic/issues)
+[开始使用](#-下载) · [报告问题](https://github.com/NattLi/Entropic/issues)
 
 </div>
