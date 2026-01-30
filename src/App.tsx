@@ -17,6 +17,15 @@ interface Variant {
     timestamp: number;
 }
 
+// 回收站项目类型定义
+interface BinItem {
+    id: string;
+    type: 'sketch' | 'variant';
+    name: string;
+    sketchId?: string; // 仅 variant 有
+    deletedAt: number;
+}
+
 // 默认代码模板（仅在无任何 sketch 时显示）
 const WELCOME_CODE = `// ✨ Entropic - Order from Chaos
 // Meaning: Generating patterns from randomness
@@ -103,6 +112,10 @@ function App() {
     const [activeVariantId, setActiveVariantId] = useState<string | null>(null)
     const [unsavedWorkingCopyBuffer, setUnsavedWorkingCopyBuffer] = useState<Map<string, string>>(new Map()) // 暂存未保存的 Working Copy
     const [isTransitioning, setIsTransitioning] = useState(false) // 切换过渡状态
+
+    // 回收站状态
+    const [binItems, setBinItems] = useState<BinItem[]>([])
+    const [isBinExpanded, setIsBinExpanded] = useState(false)
 
     // Toast Notification
     const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
@@ -487,15 +500,47 @@ function App() {
         e.stopPropagation()
         if (!window.processingAPI) return
 
-        const confirmed = window.confirm(`Delete stash ${variantId}?`)
+        const variantName = variants.get(sketchId)?.find(v => v.id === variantId)?.name || variantId
+        const confirmed = window.confirm(`Delete stash "${variantName}"?`)
         if (!confirmed) return
+
+        // 检查是否正在删除当前活动的 stash
+        const isDeletingActiveStash = activeVariantId === variantId
 
         const result = await (window.processingAPI as any).deleteVariant(sketchId, variantId)
         if (result.success) {
-            addToConsole(`🗑️ Deleted variant ${variantId}`, 'success')
+            addToConsole(`🗑️ Moved "${variantName}" to Bin`, 'success')
             await loadVariants(sketchId)
+
+            // 如果删除的是当前活动的 stash，切换回 Working Copy
+            if (isDeletingActiveStash && currentSketch) {
+                // 显示 Toast 提示
+                showToast(`📝 Switched to Working Copy`)
+
+                // 启动模糊过渡动画
+                setIsTransitioning(true)
+
+                // 清除活动 stash 状态
+                setActiveVariantId(null)
+
+                try {
+                    // 加载主文件代码
+                    const loadResult = await window.processingAPI.loadSketch(currentSketch.id)
+                    if (loadResult.success && editorRef.current) {
+                        // Editor 组件暴露的是 setCode 方法
+                        editorRef.current.setCode(loadResult.code || '')
+                        setHasUnsavedChanges(false)
+                    }
+                } catch (err) {
+                    console.error('Error loading code:', err)
+                }
+
+                // 延迟后关闭模糊效果
+                await new Promise(resolve => setTimeout(resolve, 500))
+                setIsTransitioning(false)
+            }
         } else {
-            addToConsole(`Failed to delete variant: ${result.error}`, 'error')
+            addToConsole(`Failed to delete stash: ${result.error}`, 'error')
         }
     }
 
@@ -642,6 +687,92 @@ function App() {
             await window.processingAPI.openLibraryFolder()
         }
     }
+
+    // ========================================
+    // 回收站相关操作
+    // ========================================
+
+    // 加载回收站项目
+    const loadBinItems = async () => {
+        if (!window.processingAPI) return
+        const result = await window.processingAPI.getBinItems()
+        if (result.success) {
+            setBinItems(result.items)
+        }
+    }
+
+    // 切换回收站展开/收起
+    const toggleBin = async () => {
+        if (!isBinExpanded) {
+            await loadBinItems()
+        }
+        setIsBinExpanded(!isBinExpanded)
+    }
+
+    // 从回收站恢复项目
+    const handleRestoreFromBin = async (item: BinItem) => {
+        if (!window.processingAPI) return
+        const result = await window.processingAPI.restoreBinItem(item.id, item.type)
+        if (result.success) {
+            addToConsole(`♻️ Restored "${item.name}" from Bin`, 'success')
+            showToast(`♻️ Restored "${item.name}"`)
+            await loadBinItems()
+            await loadSketches()
+            // 如果恢复的是 variant，重新加载对应 sketch 的变体列表
+            if (item.type === 'variant' && item.sketchId) {
+                await loadVariants(item.sketchId)
+            }
+        } else {
+            addToConsole(`Failed to restore: ${result.error}`, 'error')
+        }
+    }
+
+    // 彻底删除回收站项目
+    const handlePermanentDelete = async (item: BinItem) => {
+        if (!window.processingAPI) return
+        const confirmed = window.confirm(`Permanently delete "${item.name}"? This cannot be undone.`)
+        if (!confirmed) return
+
+        const result = await window.processingAPI.permanentDeleteBinItem(item.id, item.type)
+        if (result.success) {
+            addToConsole(`🗑️ Permanently deleted "${item.name}"`, 'success')
+            await loadBinItems()
+        } else {
+            addToConsole(`Failed to delete: ${result.error}`, 'error')
+        }
+    }
+
+    // 清空回收站
+    const handleEmptyBin = async () => {
+        if (!window.processingAPI) return
+        if (binItems.length === 0) {
+            showToast('Bin is already empty')
+            return
+        }
+        const confirmed = window.confirm(`Empty the bin? This will permanently delete ${binItems.length} item(s).`)
+        if (!confirmed) return
+
+        const result = await window.processingAPI.emptyBin()
+        if (result.success) {
+            addToConsole(`🗑️ Emptied bin (${binItems.length} items)`, 'success')
+            showToast('🗑️ Bin emptied')
+            await loadBinItems()
+        } else {
+            addToConsole(`Failed to empty bin: ${result.error}`, 'error')
+        }
+    }
+
+    // 格式化删除时间
+    const formatDeletedAt = (timestamp: number) => {
+        const now = Date.now()
+        const diff = now - timestamp
+        const days = Math.floor(diff / (24 * 60 * 60 * 1000))
+        if (days === 0) return 'Today'
+        if (days === 1) return 'Yesterday'
+        if (days < 30) return `${days} days ago`
+        return `${30 - Math.floor((timestamp - (now - 30 * 24 * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000))} days left`
+    }
+
 
     return (
         <div className="app">
@@ -846,6 +977,95 @@ function App() {
                             + New Sketch
                         </button>
                     </div>
+
+                    {/* 回收站区域 */}
+                    <div className="bin-section" style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                        <div
+                            className="bin-header"
+                            onClick={toggleBin}
+                            style={{
+                                display: 'flex', alignItems: 'center', cursor: 'pointer',
+                                padding: '6px 8px', borderRadius: '4px',
+                                background: isBinExpanded ? 'rgba(255,255,255,0.05)' : 'transparent'
+                            }}
+                        >
+                            <span style={{ marginRight: '6px', fontSize: '10px' }}>
+                                {isBinExpanded ? '▼' : '▶'}
+                            </span>
+                            <span style={{ flex: 1 }}>🗑️ Bin</span>
+                            {binItems.length > 0 && (
+                                <span style={{ opacity: 0.5, fontSize: '12px' }}>{binItems.length}</span>
+                            )}
+                        </div>
+
+                        {isBinExpanded && (
+                            <div className="bin-items" style={{ paddingLeft: '8px', marginTop: '8px' }}>
+                                {binItems.length === 0 ? (
+                                    <div style={{ padding: '8px', opacity: 0.5, fontSize: '13px' }}>
+                                        Bin is empty
+                                    </div>
+                                ) : (
+                                    <>
+                                        {binItems.map(item => (
+                                            <div
+                                                key={`${item.type}-${item.id}`}
+                                                className="bin-item"
+                                                style={{
+                                                    padding: '6px 10px', fontSize: '13px',
+                                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                                    opacity: 0.7, borderRadius: '4px',
+                                                    marginBottom: '2px'
+                                                }}
+                                                onContextMenu={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    const menu = document.createElement('div')
+                                                    menu.className = 'context-menu'
+                                                    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
+                                                    menu.innerHTML = `
+                                                        <div class="context-menu-item" data-action="restore">♻️ Restore</div>
+                                                        <div class="context-menu-item" data-action="delete">🗑️ Delete Permanently</div>
+                                                    `
+                                                    document.body.appendChild(menu)
+                                                    const handleClick = (ev: MouseEvent) => {
+                                                        const target = ev.target as HTMLElement
+                                                        const action = target.dataset.action
+                                                        if (action === 'restore') handleRestoreFromBin(item)
+                                                        else if (action === 'delete') handlePermanentDelete(item)
+                                                        menu.remove()
+                                                        document.removeEventListener('click', handleClick)
+                                                    }
+                                                    setTimeout(() => document.addEventListener('click', handleClick), 0)
+                                                }}
+                                            >
+                                                <span style={{ marginRight: '6px' }}>
+                                                    {item.type === 'sketch' ? '🎨' : '📌'}
+                                                </span>
+                                                <span style={{ flex: 1 }}>{item.name}</span>
+                                                <span style={{ opacity: 0.4, fontSize: '11px' }}>
+                                                    {formatDeletedAt(item.deletedAt)}
+                                                </span>
+                                            </div>
+                                        ))}
+
+                                        {binItems.length > 0 && (
+                                            <button
+                                                className="btn"
+                                                onClick={handleEmptyBin}
+                                                style={{
+                                                    marginTop: '8px', width: '100%',
+                                                    fontSize: '12px', padding: '6px 8px',
+                                                    opacity: 0.7
+                                                }}
+                                            >
+                                                Empty Bin
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Center: Editor + Console (Vertical Split) */}
@@ -866,31 +1086,7 @@ function App() {
                             defaultValue={sketches.length === 0 ? WELCOME_CODE : undefined}
                         />
 
-                        {/* Toast Notification */}
-                        <div style={{
-                            position: 'absolute',
-                            top: '50px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            background: 'rgba(30, 30, 46, 0.9)',
-                            border: '1px solid var(--accent-primary)',
-                            color: 'var(--accent-primary)',
-                            padding: '8px 16px',
-                            borderRadius: '8px',
-                            zIndex: 100,
-                            pointerEvents: 'none',
-                            transition: 'opacity 0.3s ease, transform 0.3s ease',
-                            opacity: toast.visible ? 1 : 0,
-                            marginTop: toast.visible ? '0' : '-10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                            fontSize: '14px',
-                            fontWeight: 500
-                        }}>
-                            {toast.message}
-                        </div>
+
 
                         <button
                             className="btn btn-floating-stash"
@@ -923,6 +1119,31 @@ function App() {
                         >
                             {activeVariantId ? '↺ Restore this stash' : '+ Stash this version'}
                         </button>
+                    </div>
+
+                    {/* Toast Notification - 放在 editor-container 外面以避免被模糊 */}
+                    <div style={{
+                        position: 'absolute',
+                        top: '35%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'rgba(30, 30, 46, 0.95)',
+                        border: '1px solid var(--accent-primary)',
+                        color: 'var(--accent-primary)',
+                        padding: '10px 20px',
+                        borderRadius: '8px',
+                        zIndex: 1000,
+                        pointerEvents: 'none',
+                        transition: 'opacity 0.3s ease, transform 0.3s ease',
+                        opacity: toast.visible ? 1 : 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                        fontSize: '15px',
+                        fontWeight: 500
+                    }}>
+                        {toast.message}
                     </div>
 
                     {/* Console */}

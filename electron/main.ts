@@ -791,7 +791,7 @@ ipcMain.handle('load-sketch', async (event, id) => {
     }
 })
 
-// 删除 sketch
+// 删除 sketch (软删除 - 移动到回收站)
 ipcMain.handle('delete-sketch', async (event, id) => {
     try {
         const sketchbookPath = getSketchbookPath()
@@ -801,11 +801,30 @@ ipcMain.handle('delete-sketch', async (event, id) => {
             return { success: false, error: 'Sketch not found' }
         }
 
-        // 递归删除目录
-        fs.rmSync(sketchDir, { recursive: true, force: true })
+        // 软删除：移动到回收站
+        const binPath = ensureBinExists()
+        const destPath = path.join(binPath, id)
+
+        // 如果回收站已有同名项目，先删除旧的
+        if (fs.existsSync(destPath)) {
+            fs.rmSync(destPath, { recursive: true, force: true })
+        }
+
+        // 移动到回收站
+        fs.renameSync(sketchDir, destPath)
+
+        // 记录到回收站元数据
+        const meta = readBinMetadata()
+        meta.items.push({
+            id: id,
+            type: 'sketch',
+            name: id,
+            deletedAt: Date.now()
+        })
+        writeBinMetadata(meta)
 
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         return { success: false, error: error.message }
     }
 })
@@ -973,7 +992,7 @@ ipcMain.handle('save-variant', async (event, sketchId, variantId, code) => {
     }
 })
 
-// 删除变体
+// 删除变体 (软删除 - 移动到回收站)
 ipcMain.handle('delete-variant', async (event, sketchId, variantId) => {
     try {
         const sketchbookPath = getSketchbookPath()
@@ -981,20 +1000,50 @@ ipcMain.handle('delete-variant', async (event, sketchId, variantId) => {
         const variantFile = path.join(sketchDir, '.variants', `${variantId}.pde`)
         const metaFile = path.join(sketchDir, '.variants.json')
 
-        // 删除文件
-        if (fs.existsSync(variantFile)) {
-            fs.unlinkSync(variantFile)
+        if (!fs.existsSync(variantFile)) {
+            return { success: false, error: 'Variant not found' }
         }
 
-        // 更新元数据
+        // 读取变体元数据以保存名称
+        let variantName = variantId
+        let variantTimestamp = Date.now()
+        if (fs.existsSync(metaFile)) {
+            const variantMeta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
+            const variant = variantMeta.variants.find((v: any) => v.id === variantId)
+            if (variant) {
+                variantName = variant.name
+                variantTimestamp = variant.timestamp
+            }
+        }
+
+        // 软删除：移动到回收站
+        const binPath = ensureBinExists()
+        const destFile = path.join(binPath, `${sketchId}_${variantId}.pde`)
+
+        // 移动文件到回收站
+        fs.renameSync(variantFile, destFile)
+
+        // 从原 sketch 的变体元数据中移除
         if (fs.existsSync(metaFile)) {
             let meta = JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
-            meta.variants = meta.variants.filter(v => v.id !== variantId)
+            meta.variants = meta.variants.filter((v: any) => v.id !== variantId)
             fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2))
         }
 
+        // 记录到回收站元数据
+        const binMeta = readBinMetadata()
+        binMeta.items.push({
+            id: variantId,
+            type: 'variant',
+            name: variantName,
+            sketchId: sketchId,
+            originalTimestamp: variantTimestamp,
+            deletedAt: Date.now()
+        })
+        writeBinMetadata(binMeta)
+
         return { success: true }
-    } catch (error) {
+    } catch (error: any) {
         return { success: false, error: error.message }
     }
 })
@@ -1076,4 +1125,234 @@ ipcMain.handle('rename-variant', async (event, sketchId, variantId, newName) => 
     }
 })
 
-app.whenReady().then(createWindow)
+// ========================================
+// 回收站功能 (Bin / Recycle Bin)
+// ========================================
+
+/**
+ * 获取回收站目录路径
+ * 路径: ~/Documents/Entropic/.bin/
+ */
+function getBinPath() {
+    const documentsPath = app.getPath('documents')
+    return path.join(documentsPath, 'Entropic', '.bin')
+}
+
+/**
+ * 确保回收站目录和元数据文件存在
+ */
+function ensureBinExists() {
+    const binPath = getBinPath()
+    if (!fs.existsSync(binPath)) {
+        fs.mkdirSync(binPath, { recursive: true })
+    }
+    const metaFile = path.join(binPath, 'metadata.json')
+    if (!fs.existsSync(metaFile)) {
+        fs.writeFileSync(metaFile, JSON.stringify({ items: [] }, null, 2))
+    }
+    return binPath
+}
+
+/**
+ * 读取回收站元数据
+ */
+function readBinMetadata() {
+    const binPath = ensureBinExists()
+    const metaFile = path.join(binPath, 'metadata.json')
+    try {
+        return JSON.parse(fs.readFileSync(metaFile, 'utf-8'))
+    } catch {
+        return { items: [] }
+    }
+}
+
+/**
+ * 写入回收站元数据
+ */
+function writeBinMetadata(meta: any) {
+    const binPath = ensureBinExists()
+    const metaFile = path.join(binPath, 'metadata.json')
+    fs.writeFileSync(metaFile, JSON.stringify(meta, null, 2))
+}
+
+/**
+ * 清理超过30天的回收站项目
+ * 在应用启动时调用
+ */
+function cleanExpiredBinItems() {
+    try {
+        const binPath = ensureBinExists()
+        const meta = readBinMetadata()
+        const now = Date.now()
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+
+        const expiredItems = meta.items.filter((item: any) => (now - item.deletedAt) > THIRTY_DAYS_MS)
+        const validItems = meta.items.filter((item: any) => (now - item.deletedAt) <= THIRTY_DAYS_MS)
+
+        // 删除过期项目的文件
+        for (const item of expiredItems) {
+            const itemPath = path.join(binPath, item.id)
+            if (fs.existsSync(itemPath)) {
+                fs.rmSync(itemPath, { recursive: true, force: true })
+            }
+        }
+
+        // 更新元数据
+        if (expiredItems.length > 0) {
+            meta.items = validItems
+            writeBinMetadata(meta)
+            console.log(`[Bin] Cleaned ${expiredItems.length} expired items`)
+        }
+    } catch (error) {
+        console.error('[Bin] Error cleaning expired items:', error)
+    }
+}
+
+// 获取回收站项目列表
+ipcMain.handle('get-bin-items', async () => {
+    try {
+        const meta = readBinMetadata()
+        return { success: true, items: meta.items }
+    } catch (error: any) {
+        return { success: false, error: error.message, items: [] }
+    }
+})
+
+// 从回收站恢复项目
+ipcMain.handle('restore-bin-item', async (event, itemId: string, itemType: string) => {
+    try {
+        const binPath = getBinPath()
+        const sketchbookPath = getSketchbookPath()
+        const meta = readBinMetadata()
+
+        const item = meta.items.find((i: any) => i.id === itemId && i.type === itemType)
+        if (!item) {
+            return { success: false, error: 'Item not found in bin' }
+        }
+
+        if (itemType === 'sketch') {
+            // 恢复 Sketch：从 .bin/ 移动回 sketches/
+            const srcPath = path.join(binPath, itemId)
+            const destPath = path.join(sketchbookPath, itemId)
+
+            if (fs.existsSync(destPath)) {
+                return { success: false, error: 'A sketch with this name already exists' }
+            }
+
+            if (fs.existsSync(srcPath)) {
+                fs.renameSync(srcPath, destPath)
+            }
+        } else if (itemType === 'variant') {
+            // 恢复 Variant：从 .bin/ 移动回原 sketch 的 .variants/
+            const sketchId = item.sketchId
+            const sketchDir = path.join(sketchbookPath, sketchId)
+
+            if (!fs.existsSync(sketchDir)) {
+                return { success: false, error: 'Parent sketch no longer exists' }
+            }
+
+            const variantsDir = path.join(sketchDir, '.variants')
+            if (!fs.existsSync(variantsDir)) {
+                fs.mkdirSync(variantsDir, { recursive: true })
+            }
+
+            const srcFile = path.join(binPath, `${sketchId}_${itemId}.pde`)
+            const destFile = path.join(variantsDir, `${itemId}.pde`)
+
+            if (fs.existsSync(srcFile)) {
+                fs.renameSync(srcFile, destFile)
+            }
+
+            // 恢复 variant 元数据
+            const variantMetaFile = path.join(sketchDir, '.variants.json')
+            let variantMeta = { variants: [] as any[] }
+            if (fs.existsSync(variantMetaFile)) {
+                variantMeta = JSON.parse(fs.readFileSync(variantMetaFile, 'utf-8'))
+            }
+            variantMeta.variants.push({
+                id: itemId,
+                name: item.name,
+                timestamp: item.originalTimestamp || Date.now()
+            })
+            fs.writeFileSync(variantMetaFile, JSON.stringify(variantMeta, null, 2))
+        }
+
+        // 从回收站元数据中移除
+        meta.items = meta.items.filter((i: any) => !(i.id === itemId && i.type === itemType))
+        writeBinMetadata(meta)
+
+        return { success: true }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 永久删除回收站项目
+ipcMain.handle('permanent-delete-bin-item', async (event, itemId: string, itemType: string) => {
+    try {
+        const binPath = getBinPath()
+        const meta = readBinMetadata()
+
+        const item = meta.items.find((i: any) => i.id === itemId && i.type === itemType)
+        if (!item) {
+            return { success: false, error: 'Item not found in bin' }
+        }
+
+        // 删除文件
+        if (itemType === 'sketch') {
+            const itemPath = path.join(binPath, itemId)
+            if (fs.existsSync(itemPath)) {
+                fs.rmSync(itemPath, { recursive: true, force: true })
+            }
+        } else if (itemType === 'variant') {
+            const srcFile = path.join(binPath, `${item.sketchId}_${itemId}.pde`)
+            if (fs.existsSync(srcFile)) {
+                fs.unlinkSync(srcFile)
+            }
+        }
+
+        // 从元数据中移除
+        meta.items = meta.items.filter((i: any) => !(i.id === itemId && i.type === itemType))
+        writeBinMetadata(meta)
+
+        return { success: true }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 清空回收站
+ipcMain.handle('empty-bin', async () => {
+    try {
+        const binPath = getBinPath()
+        const meta = readBinMetadata()
+
+        // 删除所有文件
+        for (const item of meta.items) {
+            if (item.type === 'sketch') {
+                const itemPath = path.join(binPath, item.id)
+                if (fs.existsSync(itemPath)) {
+                    fs.rmSync(itemPath, { recursive: true, force: true })
+                }
+            } else if (item.type === 'variant') {
+                const srcFile = path.join(binPath, `${item.sketchId}_${item.id}.pde`)
+                if (fs.existsSync(srcFile)) {
+                    fs.unlinkSync(srcFile)
+                }
+            }
+        }
+
+        // 清空元数据
+        writeBinMetadata({ items: [] })
+
+        return { success: true }
+    } catch (error: any) {
+        return { success: false, error: error.message }
+    }
+})
+
+// 应用启动时清理过期的回收站项目
+app.whenReady().then(() => {
+    cleanExpiredBinItems()
+    createWindow()
+})

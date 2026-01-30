@@ -46,6 +46,12 @@ contextBridge.exposeInMainWorld('processingAPI', {
     renameVariant: (sketchId: string, variantId: string, newName: string) => ipcRenderer.invoke('rename-variant', sketchId, variantId, newName),
     restoreVariant: (sketchId: string, variantId: string) => ipcRenderer.invoke('restore-variant', sketchId, variantId),
     showItemInFolder: (sketchId: string, itemId?: string) => ipcRenderer.invoke('show-item-in-folder', sketchId, itemId),
+
+    // 回收站 API
+    getBinItems: () => ipcRenderer.invoke('get-bin-items'),
+    restoreBinItem: (id: string, type: string) => ipcRenderer.invoke('restore-bin-item', id, type),
+    permanentDeleteBinItem: (id: string, type: string) => ipcRenderer.invoke('permanent-delete-bin-item', id, type),
+    emptyBin: () => ipcRenderer.invoke('empty-bin'),
 })
 
 export { }
@@ -89,6 +95,12 @@ declare global {
             renameVariant: (sketchId: string, variantId?: string, newName?: string) => Promise<{ success: boolean; error?: string }>
             restoreVariant: (sketchId: string, variantId: string) => Promise<{ success: boolean; error?: string }>
             showItemInFolder: (sketchId: string, itemId?: string) => Promise<{ success: boolean; error?: string }>
+
+            // Bin (recycle bin) management
+            getBinItems: () => Promise<{ success: boolean; items: any[]; error?: string }>
+            restoreBinItem: (id: string, type: string) => Promise<{ success: boolean; error?: string }>
+            permanentDeleteBinItem: (id: string, type: string) => Promise<{ success: boolean; error?: string }>
+            emptyBin: () => Promise<{ success: boolean; error?: string }>
         }
     }
 }

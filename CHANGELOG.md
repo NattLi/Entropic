@@ -5,6 +5,21 @@ All notable changes to Entropic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-01-30
+
+### Added
+- **Bin (Recycle Bin) Feature**: Soft deletion for Sketches and Stashes
+    - Deleted items are moved to `.bin/` folder instead of permanent deletion
+    - 30-day automatic cleanup of expired items on app startup
+    - Collapsible Bin section in sidebar with item count badge
+    - Right-click context menu: Restore / Delete Permanently
+    - "Empty Bin" button to clear all items at once
+    - Time-since-deletion display for each item (Today, Yesterday, X days ago)
+- **UX Enhancement**: When deleting an active stash, automatically switches to Working Copy with blur transition animation and Toast notification
+
+### Fixed
+- Editor blur animation now properly clears after stash deletion (was stuck due to incorrect API call)
+
 ## [0.2.0] - 2026-01-29
 
 ### Added
