@@ -5,6 +5,23 @@ All notable changes to Entropic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-30
+
+### Added
+- **Sketchbook UX Improvements**:
+    - Date grouping (Today, Yesterday, specific dates)
+    - Real-time search filtering with clear button
+    - Star/Pin feature with backend persistence (`.starred.json`)
+    - Starred sketches grouped at top of list
+    - Visual hierarchy: active item accent border, inactive opacity reduction
+
+### Changed
+- **Neutral Dark Theme**: Replaced purple-tinted theme with neutral gray/black color scheme
+    - Better for designers' color perception ("white balance")
+    - Monaco Editor now uses VS Code-like syntax colors
+    - Updated accent colors from cyan/pink to blue tones
+- **UI Polish**: Fixed "Open Libraries Folder" button styling (removed white background)
+
 ## [0.3.5] - 2026-01-30
 
 ### Improved

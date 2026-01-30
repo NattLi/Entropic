@@ -33,26 +33,28 @@ const Editor = forwardRef((props: any, ref: any) => {
     }))
 
     const handleEditorWillMount = (monaco: any) => {
-        // 配置 Monaco Editor 主题 -在此处定义以避免加载时的闪烁
+        // 配置 Monaco Editor 主题 - 中性灰色调，不影响设计师的白平衡
         monaco.editor.defineTheme('creativity-dark', {
             base: 'vs-dark',
             inherit: true,
             rules: [
-                { token: 'comment', foreground: '6272A4', fontStyle: 'italic' },
-                { token: 'keyword', foreground: 'FF79C6' },
-                { token: 'string', foreground: 'F1FA8C' },
-                { token: 'number', foreground: 'BD93F9' },
-                { token: 'type', foreground: '50FA7B' },
+                { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },  // 绿色注释
+                { token: 'keyword', foreground: '569CD6' },   // 蓝色关键字
+                { token: 'string', foreground: 'CE9178' },    // 橙色字符串
+                { token: 'number', foreground: 'B5CEA8' },    // 浅绿数字
+                { token: 'type', foreground: '4EC9B0' },      // 青色类型
+                { token: 'function', foreground: 'DCDCAA' },  // 黄色函数
+                { token: 'variable', foreground: '9CDCFE' },  // 浅蓝变量
             ],
             colors: {
-                'editor.background': '#1E1E2E',
-                'editor.foreground': '#E0E0E0',
-                'editor.lineHighlightBackground': '#1E1E2E', // 与背景一致，避免首行"底色不对"的视觉问题
-                'editorLineNumber.foreground': '#6B6B7B',
-                'editorLineNumber.activeForeground': '#00D9FF',
-                'editor.selectionBackground': '#363650',
-                'editorIndentGuide.background': '#363650',
-                'editorIndentGuide.activeBackground': '#00D9FF',
+                'editor.background': '#1E1E1E',
+                'editor.foreground': '#D4D4D4',
+                'editor.lineHighlightBackground': '#1E1E1E',
+                'editorLineNumber.foreground': '#858585',
+                'editorLineNumber.activeForeground': '#C6C6C6',
+                'editor.selectionBackground': '#264F78',
+                'editorIndentGuide.background': '#404040',
+                'editorIndentGuide.activeBackground': '#707070',
             },
         })
     }

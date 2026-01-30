@@ -1,21 +1,21 @@
 :root {
-  /* Creativity Dark Theme */
-  /* 背景 - 温暖的深色，而非冷冰冰的黑色 */
-  --bg-primary: #1E1E2E;
-  --bg-secondary: #2A2A3E;
-  --bg-tertiary: #363650;
+  /* Neutral Dark Theme - Color Balance Friendly */
+  /* 背景 - 纯黑灰色调，不影响设计师的白平衡 */
+  --bg-primary: #1E1E1E;
+  --bg-secondary: #252526;
+  --bg-tertiary: #333333;
 
-  /* 强调色 - 活力和创意 */
-  --accent-primary: #00D9FF;
-  --accent-secondary: #FF6B9D;
-  --accent-success: #00E676;
-  --accent-warning: #FFB74D;
-  --accent-error: #FF5252;
+  /* 强调色 - 保持活力但更中性 */
+  --accent-primary: #0098FF;
+  --accent-secondary: #569CD6;
+  --accent-success: #4EC9B0;
+  --accent-warning: #DCDCAA;
+  --accent-error: #F44747;
 
   /* 文字 */
-  --text-primary: #E0E0E0;
-  --text-secondary: #A0A0B0;
-  --text-muted: #6B6B7B;
+  --text-primary: #CCCCCC;
+  --text-secondary: #9D9D9D;
+  --text-muted: #6A6A6A;
 
   /* 间距 */
   --spacing-xs: 4px;
@@ -72,5 +72,5 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #4A4A64;
+  background: #4A4A4A;
 }

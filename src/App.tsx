@@ -1368,8 +1368,35 @@ function App() {
                         )}
 
                         {/* 总是显示打开库文件夹的入口，方便用户管理 */}
-                        <div style={{ marginTop: '20px', borderTop: '1px solid #333', paddingTop: '10px' }}>
-                            <button className="btn-text" onClick={handleOpenLibs} style={{ opacity: 0.7, fontSize: '12px' }}>📂 Open Libraries Folder</button>
+                        <div style={{ marginTop: '16px', borderTop: '1px solid var(--bg-tertiary)', paddingTop: '12px' }}>
+                            <button
+                                onClick={handleOpenLibs}
+                                style={{
+                                    background: 'transparent',
+                                    border: '1px solid var(--bg-tertiary)',
+                                    color: 'var(--text-secondary)',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    width: '100%',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = 'var(--bg-tertiary)'
+                                    e.currentTarget.style.color = 'var(--text-primary)'
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = 'transparent'
+                                    e.currentTarget.style.color = 'var(--text-secondary)'
+                                }}
+                            >
+                                📂 Open Libraries Folder
+                            </button>
                         </div>
                     </div>
                 </div>

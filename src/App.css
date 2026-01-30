@@ -55,7 +55,7 @@
 }
 
 .btn:hover:not(:disabled) {
-    background-color: #4A4A64;
+    background-color: #3C3C3C;
     transform: translateY(-1px);
 }
 
@@ -65,18 +65,18 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--accent-primary), #0099CC);
+    background: linear-gradient(135deg, var(--accent-primary), #0078D4);
     color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, #00E6FF, var(--accent-primary));
+    background: linear-gradient(135deg, #40A9FF, var(--accent-primary));
 }
 
 .btn-new {
     flex: 1;
     margin-top: var(--spacing-md);
-    background: linear-gradient(135deg, var(--accent-secondary), #CC5577);
+    background: linear-gradient(135deg, var(--accent-secondary), #4A90D9);
     color: white;
 }
 
@@ -153,7 +153,7 @@
 }
 
 .project-item.active {
-    background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(255, 107, 157, 0.2));
+    background: rgba(0, 152, 255, 0.15);
     border-left: 3px solid var(--accent-primary);
 }
 
@@ -209,7 +209,7 @@
 
 .console {
     flex: 1;
-    background-color: #1A1A28;
+    background-color: #1A1A1A;
     padding: var(--spacing-md);
     overflow-y: auto;
     font-family: 'Fira Code', 'Consolas', monospace;
