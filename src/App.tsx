@@ -312,8 +312,8 @@ function App() {
             setCurrentSketch(result.sketch)
             setActiveVariantId(null) // 明确进入 Working Copy
 
-            // 自动展开新创建的项目
-            setExpandedSketches(prev => new Set(prev).add(result.sketch!.id))
+            // 单一展开模式：只展开新创建的项目
+            setExpandedSketches(new Set([result.sketch!.id]))
 
             // 加载代码
             const loadResult = await window.processingAPI.loadSketch(result.sketch.id)
@@ -393,19 +393,20 @@ function App() {
         }
     }
 
-    // 展开/收起 sketch 的变体列表
+    // 展开/收起 sketch 的变体列表 (单一展开模式 - 只保留一个展开)
     const toggleExpand = async (sketchId: string) => {
-        const newExpanded = new Set(expandedSketches)
-        if (newExpanded.has(sketchId)) {
-            newExpanded.delete(sketchId)
+        if (expandedSketches.has(sketchId)) {
+            // 已展开，则收起
+            setExpandedSketches(new Set())
         } else {
-            newExpanded.add(sketchId)
+            // 未展开，则展开并收起其他所有
+            const newExpanded = new Set([sketchId])
             // 首次展开时加载变体列表
             if (!variants.has(sketchId)) {
                 await loadVariants(sketchId)
             }
+            setExpandedSketches(newExpanded)
         }
-        setExpandedSketches(newExpanded)
     }
 
     // 暂存当前代码为新变体
@@ -583,12 +584,10 @@ function App() {
             showToast('🏠 Returned to Working Copy')
         }
 
-        // 如果有未保存的更改，提示保存
+        // 如果有未保存的更改，自动保存到 Working Copy
         if (hasUnsavedChanges && currentSketch) {
-            const shouldSave = window.confirm(`Save changes to "${currentSketch.name}"?`)
-            if (shouldSave) {
-                await handleSave()
-            }
+            await handleSave()
+            showToast(`✔ Auto-saved "${currentSketch.name}"`)
         }
 
         setIsTransitioning(true)
@@ -816,7 +815,13 @@ function App() {
                                     {/* 主 sketch 项目 */}
                                     <div
                                         className={`project-item ${currentSketch?.id === sketch.id ? 'active' : ''}`}
-                                        onClick={() => handleSelectSketch(sketch)}
+                                        onClick={async () => {
+                                            // 展开风琴并加载 Working Copy
+                                            if (!expandedSketches.has(sketch.id)) {
+                                                await toggleExpand(sketch.id)
+                                            }
+                                            handleSelectSketch(sketch)
+                                        }}
                                         onDoubleClick={(e) => {
                                             e.stopPropagation()
                                             handleStartRename(sketch, e)
@@ -866,13 +871,6 @@ function App() {
                                             />
                                         ) : (
                                             <>
-                                                {/* 展开/收起按钮 */}
-                                                <span
-                                                    onClick={(e) => { e.stopPropagation(); toggleExpand(sketch.id) }}
-                                                    style={{ cursor: 'pointer', marginRight: '4px', fontSize: '10px' }}
-                                                >
-                                                    {expandedSketches.has(sketch.id) ? '▼' : '▶'}
-                                                </span>
                                                 <span style={{ flex: 1 }}>🎨 {sketch.name}</span>
                                                 {currentSketch?.id === sketch.id && hasUnsavedChanges && (
                                                     <span style={{ opacity: 0.5 }}>●</span>
