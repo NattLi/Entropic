@@ -5,6 +5,20 @@ All notable changes to Entropic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-01-30
+
+### Added
+- **Serial Port Scanner**:
+    - Integrated Tabbed Console/Serial interface
+    - "Scan All Ports" functionality to detect active devices
+    - Processing-style port list display (e.g., `[0] COM3`)
+    - Real-time data preview for active ports
+    - Copy port path to clipboard
+- **Editor Improvements**:
+    - Updated default "Welcome" sketch for better Java compatibility
+    - Fixed `color` type issues (switched to `int`)
+    - Fixed float literal precision issues (added `f` suffix)
+
 ## [0.4.0] - 2026-01-30
 
 ### Added

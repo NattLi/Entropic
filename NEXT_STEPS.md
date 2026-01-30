@@ -36,6 +36,11 @@ Entropic 是一个面向设计师和艺术家的 Processing IDE 替代品。
   - [x] 实时搜索过滤
   - [x] 星标置顶 (Star/Pin) & 后端存储
   - [x] 视觉层次优化
+- [x] **串口扫描器 (Serial Port Scanner)** (v0.5.0) 🔌
+  - [x] Tab 分页控制台 (Console/Serial)
+  - [x] 一键扫描所有端口
+  - [x] Processing 风格端口列表
+  - [x] 实时数据预览
 
 ---
 

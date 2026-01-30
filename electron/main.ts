@@ -1398,6 +1398,76 @@ ipcMain.handle('empty-bin', async () => {
     }
 })
 
+// ========= 串口扫描器 =========
+const { SerialPort } = require('serialport')
+
+// 获取可用串口列表
+ipcMain.handle('list-serial-ports', async () => {
+    try {
+        const ports = await SerialPort.list()
+        return {
+            success: true,
+            ports: ports.map((p: any) => ({
+                path: p.path,
+                manufacturer: p.manufacturer || 'Unknown',
+                serialNumber: p.serialNumber || '',
+                vendorId: p.vendorId || '',
+                productId: p.productId || ''
+            }))
+        }
+    } catch (error: any) {
+        return { success: false, ports: [], error: error.message }
+    }
+})
+
+// 快速扫描串口数据（读取几秒后关闭）
+ipcMain.handle('scan-serial-port', async (event, portPath: string, baudRate: number = 9600) => {
+    return new Promise((resolve) => {
+        try {
+            const port = new SerialPort({
+                path: portPath,
+                baudRate: baudRate,
+                autoOpen: false
+            })
+
+            let dataReceived = ''
+            let hasData = false
+
+            port.open((err: any) => {
+                if (err) {
+                    resolve({ success: false, hasData: false, error: err.message })
+                    return
+                }
+
+                // 监听数据
+                port.on('data', (data: Buffer) => {
+                    hasData = true
+                    dataReceived += data.toString()
+                })
+
+                // 2秒后关闭并返回结果
+                setTimeout(() => {
+                    port.close((closeErr: any) => {
+                        resolve({
+                            success: true,
+                            hasData: hasData,
+                            sample: dataReceived.slice(0, 200), // 最多返回200字符
+                            error: closeErr ? closeErr.message : null
+                        })
+                    })
+                }, 2000)
+            })
+
+            port.on('error', (err: any) => {
+                resolve({ success: false, hasData: false, error: err.message })
+            })
+
+        } catch (error: any) {
+            resolve({ success: false, hasData: false, error: error.message })
+        }
+    })
+})
+
 // 应用启动时清理过期的回收站项目
 app.whenReady().then(() => {
     cleanExpiredBinItems()

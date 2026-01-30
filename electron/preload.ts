@@ -56,6 +56,10 @@ contextBridge.exposeInMainWorld('processingAPI', {
     // 星标 API
     getStarredSketches: () => ipcRenderer.invoke('get-starred-sketches'),
     toggleStarSketch: (sketchId: string) => ipcRenderer.invoke('toggle-star-sketch', sketchId),
+
+    // 串口扫描 API
+    listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
+    scanSerialPort: (portPath: string, baudRate: number) => ipcRenderer.invoke('scan-serial-port', portPath, baudRate),
 })
 
 export { }

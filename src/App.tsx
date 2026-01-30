@@ -32,7 +32,7 @@ const WELCOME_CODE = `// ✨ Entropic - Order from Chaos
 
 float[] x, y;  // Position
 float[] angle; // Direction
-color[] c;     // Color
+int[] c;       // Color (use int instead of color for Java mode)
 int num = 1000; // Particle count
 
 void setup() {
@@ -43,7 +43,7 @@ void setup() {
   x = new float[num];
   y = new float[num];
   angle = new float[num];
-  c = new color[num];
+  c = new int[num];
   
   for(int i=0; i<num; i++) {
     x[i] = random(width);
@@ -66,8 +66,8 @@ void draw() {
   
   for(int i=0; i<num; i++) {
     // Flow field based on Perlin Noise (Entropy)
-    float n = noise(x[i]*0.005, y[i]*0.005, frameCount*0.005);
-    angle[i] += map(n, 0, 1, -0.1, 0.1);
+    float n = noise(x[i]*0.005f, y[i]*0.005f, frameCount*0.005f);
+    angle[i] += map(n, 0, 1, -0.1f, 0.1f);
     
     x[i] += cos(angle[i]) * 2;
     y[i] += sin(angle[i]) * 2;
@@ -128,6 +128,12 @@ function App() {
     // Toast Notification
     const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
     const toastTimerRef = useRef<any>(null)
+
+    // 串口扫描器状态
+    const [bottomPanelTab, setBottomPanelTab] = useState<'console' | 'serial'>('console')
+    const [serialPorts, setSerialPorts] = useState<{ path: string; manufacturer: string }[]>([])
+    const [scanningPort, setScanningPort] = useState<string | null>(null)
+    const [serialScanResults, setSerialScanResults] = useState<Map<string, { hasData: boolean; sample?: string }>>(new Map())
 
     const showToast = (message: string) => {
         if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
@@ -868,6 +874,43 @@ function App() {
         return `${30 - Math.floor((timestamp - (now - 30 * 24 * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000))} days left`
     }
 
+    // ========= 串口扫描器 =========
+    const [isScanning, setIsScanning] = useState(false)
+
+    const scanAllPorts = async () => {
+        setIsScanning(true)
+        setSerialScanResults(new Map())
+        try {
+            // 先获取端口列表
+            const listResult = await (window as any).processingAPI.listSerialPorts()
+            if (listResult.success) {
+                setSerialPorts(listResult.ports)
+                // 逐个扫描端口
+                for (const port of listResult.ports) {
+                    setScanningPort(port.path)
+                    try {
+                        const scanResult = await (window as any).processingAPI.scanSerialPort(port.path, 9600)
+                        setSerialScanResults(prev => {
+                            const newMap = new Map(prev)
+                            newMap.set(port.path, { hasData: scanResult.hasData, sample: scanResult.sample })
+                            return newMap
+                        })
+                    } catch (e: any) {
+                        setSerialScanResults(prev => {
+                            const newMap = new Map(prev)
+                            newMap.set(port.path, { hasData: false, sample: `Error: ${e.message}` })
+                            return newMap
+                        })
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to scan serial ports:', e)
+        } finally {
+            setScanningPort(null)
+            setIsScanning(false)
+        }
+    }
 
     return (
         <div className="app">
@@ -1417,26 +1460,113 @@ function App() {
                         {toast.message}
                     </div>
 
-                    {/* Console */}
+                    {/* Console / Serial Scanner - Tabbed Panel */}
                     <div className="console-container">
-                        <div className="console-header">
-                            <h4>📊 Console</h4>
-                            <div className="console-actions">
-                                <button className="btn-icon" onClick={handleClearConsole} title="Clear console">
-                                    🗑️
+                        {/* Tab Header */}
+                        <div className="console-header" style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                            <button
+                                onClick={() => setBottomPanelTab('console')}
+                                style={{
+                                    background: bottomPanelTab === 'console' ? 'var(--bg-tertiary)' : 'transparent',
+                                    border: 'none',
+                                    borderBottom: bottomPanelTab === 'console' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                    color: bottomPanelTab === 'console' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                }}
+                            >
+                                📊 Console
+                            </button>
+                            <button
+                                onClick={() => { setBottomPanelTab('serial'); scanAllPorts(); }}
+                                style={{
+                                    background: bottomPanelTab === 'serial' ? 'var(--bg-tertiary)' : 'transparent',
+                                    border: 'none',
+                                    borderBottom: bottomPanelTab === 'serial' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                    color: bottomPanelTab === 'serial' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                }}
+                            >
+                                🔌 Serial
+                            </button>
+                            <div style={{ flex: 1 }} />
+                            {bottomPanelTab === 'console' && (
+                                <div className="console-actions">
+                                    <button className="btn-icon" onClick={handleClearConsole} title="Clear console">
+                                        🗑️
+                                    </button>
+                                    <button className="btn-icon" onClick={handleCopyConsole} title="Copy to clipboard">
+                                        📋
+                                    </button>
+                                </div>
+                            )}
+                            {bottomPanelTab === 'serial' && (
+                                <button
+                                    onClick={scanAllPorts}
+                                    disabled={isScanning}
+                                    style={{
+                                        background: 'transparent',
+                                        border: '1px solid var(--accent-primary)',
+                                        color: 'var(--accent-primary)',
+                                        padding: '4px 12px',
+                                        borderRadius: '4px',
+                                        fontSize: '11px',
+                                        cursor: isScanning ? 'not-allowed' : 'pointer',
+                                        marginRight: '8px',
+                                        opacity: isScanning ? 0.6 : 1
+                                    }}
+                                >
+                                    {isScanning ? '⏳ Scanning...' : '🔍 Scan All Ports'}
                                 </button>
-                                <button className="btn-icon" onClick={handleCopyConsole} title="Copy to clipboard">
-                                    📋
-                                </button>
+                            )}
+                        </div>
+
+                        {/* Console Content */}
+                        {bottomPanelTab === 'console' && (
+                            <div className="console">
+                                {consoleOutput.map((line, index) => (
+                                    <p key={index} className={`console-text ${line.startsWith('❌') ? 'error' : line.startsWith('✅') ? 'success' : ''}`}>
+                                        {line}
+                                    </p>
+                                ))}
                             </div>
-                        </div>
-                        <div className="console">
-                            {consoleOutput.map((line, index) => (
-                                <p key={index} className={`console-text ${line.startsWith('❌') ? 'error' : line.startsWith('✅') ? 'success' : ''}`}>
-                                    {line}
-                                </p>
-                            ))}
-                        </div>
+                        )}
+
+                        {/* Serial Scanner Content - Processing Style */}
+                        {bottomPanelTab === 'serial' && (
+                            <div className="console" style={{ fontFamily: 'monospace', fontSize: '13px' }}>
+                                {serialPorts.length === 0 ? (
+                                    <p style={{ color: 'var(--text-secondary)', padding: '12px' }}>
+                                        Click "Scan All Ports" to detect serial ports...
+                                    </p>
+                                ) : (
+                                    <>
+                                        <p style={{ color: 'var(--text-secondary)', padding: '4px 12px', margin: 0 }}>
+                                            Serial.list():
+                                        </p>
+                                        {serialPorts.map((port, index) => {
+                                            const scanResult = serialScanResults.get(port.path)
+                                            return (
+                                                <p key={port.path} style={{
+                                                    padding: '4px 12px',
+                                                    margin: 0,
+                                                    color: scanResult?.hasData ? 'var(--accent-success)' : 'var(--text-primary)',
+                                                    background: scanResult?.hasData ? 'rgba(0, 230, 118, 0.1)' : 'transparent'
+                                                }}>
+                                                    [{index}] {port.path} {scanResult?.hasData ? '✓ (Active)' : ''}
+                                                    {scanningPort === port.path && <span style={{ color: 'var(--accent-primary)' }}> ⏳</span>}
+                                                </p>
+                                            )
+                                        })}
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
