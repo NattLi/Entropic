@@ -76,7 +76,7 @@ Paste the following code into the editor:
 
 float[] x, y;  // Position
 float[] angle; // Direction
-color[] c;     // Color
+int[] c;       // Color (use int instead of color for Java compatibility)
 int num = 1000; // Particle count
 
 void setup() {
@@ -87,7 +87,7 @@ void setup() {
   x = new float[num];
   y = new float[num];
   angle = new float[num];
-  c = new color[num];
+  c = new int[num];
   
   for(int i=0; i<num; i++) {
     x[i] = random(width);
@@ -110,8 +110,8 @@ void draw() {
   
   for(int i=0; i<num; i++) {
     // Flow field based on Perlin Noise (Entropy)
-    float n = noise(x[i]*0.005, y[i]*0.005, frameCount*0.005);
-    angle[i] += map(n, 0, 1, -0.1, 0.1);
+    float n = noise(x[i]*0.005f, y[i]*0.005f, frameCount*0.005f);
+    angle[i] += map(n, 0, 1, -0.1f, 0.1f);
     
     x[i] += cos(angle[i]) * 2;
     y[i] += sin(angle[i]) * 2;
@@ -283,20 +283,60 @@ npm run dev
 把下面的代码粘贴到编辑器：
 
 ```processing
+// ✨ Entropic - 混沌中诞生秩序
+// 含义：从随机性中生成规律的图案
+
+float[] x, y;  // 位置
+float[] angle; // 方向
+int[] c;       // 颜色 (Java 兼容，使用 int 替代 color)
+int num = 1000; // 粒子数量
+
 void setup() {
   size(800, 600);
-  background(20);
+  background(10);
+  noStroke();
+  
+  x = new float[num];
+  y = new float[num];
+  angle = new float[num];
+  c = new int[num];
+  
+  for(int i=0; i<num; i++) {
+    x[i] = random(width);
+    y[i] = random(height);
+    angle[i] = random(TWO_PI);
+    // 混沌中诞生的霓虹色彩
+    c[i] = color(
+      random(50, 150),
+      random(100, 255),
+      255, 
+      100
+    );
+  }
 }
 
 void draw() {
-  // 半透明背景创造拖尾效果
-  fill(20, 20, 20, 10);
+  // 半透明背景实现拖尾效果
+  fill(10, 20);
   rect(0, 0, width, height);
   
-  // 绘制跟随鼠标的圆圈
-  fill(random(200, 255), random(100, 200), random(150, 255));
-  noStroke();
-  circle(mouseX, mouseY, random(10, 40));
+  for(int i=0; i<num; i++) {
+    // 基于柏林噪声的流场（熵）
+    float n = noise(x[i]*0.005f, y[i]*0.005f, frameCount*0.005f);
+    angle[i] += map(n, 0, 1, -0.1f, 0.1f);
+    
+    x[i] += cos(angle[i]) * 2;
+    y[i] += sin(angle[i]) * 2;
+    
+    // 边缘环绕
+    if(x[i] < 0) x[i] = width;
+    if(x[i] > width) x[i] = 0;
+    if(y[i] < 0) y[i] = height;
+    if(y[i] > height) y[i] = 0;
+    
+    fill(c[i]);
+    circle(x[i], y[i], 2);
+  }
 }
 ```
 
