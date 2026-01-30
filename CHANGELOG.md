@@ -5,6 +5,17 @@ All notable changes to Entropic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-01-30
+
+### Improved
+- **Serial Scanner UI Polish**:
+    - **VS Code Style Tabs**: Replaced underlined tabs with pill-shaped, vertically centered buttons matching VS Code Terminal style.
+    - **Clean Icons**: Replaced text buttons with minimalist SVG icons for Clear and Copy actions.
+    - **Alignment**: Fixed header height and button alignment for a pixel-perfect layout.
+- **Scanning UX**:
+    - **Loading State**: Added "Scanning for devices..." feedback with artificial delay (800ms) to confirm refresh action.
+    - **Auto-Clear**: Port list is cleared immediately when starting a scan to provide better visual feedback.
+
 ## [0.5.0] - 2026-01-30
 
 ### Added

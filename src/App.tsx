@@ -879,7 +879,12 @@ function App() {
 
     const scanAllPorts = async () => {
         setIsScanning(true)
+        setSerialPorts([]) // Clear existing ports to show loading state
         setSerialScanResults(new Map())
+
+        // Artificial delay for UX perception
+        await new Promise(resolve => setTimeout(resolve, 800))
+
         try {
             // 先获取端口列表
             const listResult = await (window as any).processingAPI.listSerialPorts()
@@ -1463,45 +1468,68 @@ function App() {
                     {/* Console / Serial Scanner - Tabbed Panel */}
                     <div className="console-container">
                         {/* Tab Header */}
-                        <div className="console-header" style={{ display: 'flex', alignItems: 'center', gap: '0', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                        <div className="console-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid var(--bg-tertiary)', paddingLeft: '12px', height: '36px' }}>
                             <button
                                 onClick={() => setBottomPanelTab('console')}
                                 style={{
                                     background: bottomPanelTab === 'console' ? 'var(--bg-tertiary)' : 'transparent',
                                     border: 'none',
-                                    borderBottom: bottomPanelTab === 'console' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                    borderRadius: '4px',
                                     color: bottomPanelTab === 'console' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    padding: '8px 12px',
-                                    fontSize: '12px',
+                                    padding: '2px 10px',
+                                    fontSize: '11px',
                                     cursor: 'pointer',
-                                    fontWeight: 500
+                                    fontWeight: bottomPanelTab === 'console' ? 500 : 400,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.1s',
+                                    height: '24px'
                                 }}
                             >
-                                📊 Console
+                                Console
                             </button>
                             <button
                                 onClick={() => { setBottomPanelTab('serial'); scanAllPorts(); }}
                                 style={{
                                     background: bottomPanelTab === 'serial' ? 'var(--bg-tertiary)' : 'transparent',
                                     border: 'none',
-                                    borderBottom: bottomPanelTab === 'serial' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                                    borderRadius: '4px',
                                     color: bottomPanelTab === 'serial' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    padding: '8px 12px',
-                                    fontSize: '12px',
+                                    padding: '2px 10px',
+                                    fontSize: '11px',
                                     cursor: 'pointer',
-                                    fontWeight: 500
+                                    fontWeight: bottomPanelTab === 'serial' ? 500 : 400,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.1s',
+                                    height: '24px'
                                 }}
                             >
-                                🔌 Serial
+                                Serial
                             </button>
                             <div style={{ flex: 1 }} />
                             {bottomPanelTab === 'console' && (
-                                <div className="console-actions">
-                                    <button className="btn-icon" onClick={handleClearConsole} title="Clear console">
-                                        🗑️
+                                <div className="console-actions" style={{ display: 'flex', alignItems: 'center', paddingRight: '12px', gap: '8px' }}>
+                                    <button
+                                        onClick={handleClearConsole}
+                                        title="Clear console"
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M3 6h18"></path>
+                                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                        </svg>
                                     </button>
-                                    <button className="btn-icon" onClick={handleCopyConsole} title="Copy to clipboard">
-                                        📋
+                                    <button
+                                        onClick={handleCopyConsole}
+                                        title="Copy to clipboard"
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                    >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
                                     </button>
                                 </div>
                             )}
@@ -1511,17 +1539,20 @@ function App() {
                                     disabled={isScanning}
                                     style={{
                                         background: 'transparent',
-                                        border: '1px solid var(--accent-primary)',
-                                        color: 'var(--accent-primary)',
-                                        padding: '4px 12px',
-                                        borderRadius: '4px',
+                                        border: '1px solid var(--text-secondary)', // Black/white outline style
+                                        color: 'var(--text-secondary)',
+                                        padding: '2px 8px',
+                                        borderRadius: '3px',
                                         fontSize: '11px',
                                         cursor: isScanning ? 'not-allowed' : 'pointer',
-                                        marginRight: '8px',
-                                        opacity: isScanning ? 0.6 : 1
+                                        marginRight: '12px',
+                                        opacity: isScanning ? 0.6 : 1,
+                                        height: '22px', // Specific height for vertical center
+                                        display: 'flex',
+                                        alignItems: 'center'
                                     }}
                                 >
-                                    {isScanning ? '⏳ Scanning...' : '🔍 Scan All Ports'}
+                                    {isScanning ? 'Scanning...' : 'Scan All Ports'}
                                 </button>
                             )}
                         </div>
@@ -1541,9 +1572,15 @@ function App() {
                         {bottomPanelTab === 'serial' && (
                             <div className="console" style={{ fontFamily: 'monospace', fontSize: '13px' }}>
                                 {serialPorts.length === 0 ? (
-                                    <p style={{ color: 'var(--text-secondary)', padding: '12px' }}>
-                                        Click "Scan All Ports" to detect serial ports...
-                                    </p>
+                                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                        {isScanning ? (
+                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: 0.7 }}>
+                                                <span className="scanning-dots">Scanning for devices</span>
+                                            </span>
+                                        ) : (
+                                            <span style={{ opacity: 0.5 }}>Click "Scan All Ports" to detect devices</span>
+                                        )}
+                                    </div>
                                 ) : (
                                     <>
                                         <p style={{ color: 'var(--text-secondary)', padding: '4px 12px', margin: 0 }}>
@@ -1558,8 +1595,8 @@ function App() {
                                                     color: scanResult?.hasData ? 'var(--accent-success)' : 'var(--text-primary)',
                                                     background: scanResult?.hasData ? 'rgba(0, 230, 118, 0.1)' : 'transparent'
                                                 }}>
-                                                    [{index}] {port.path} {scanResult?.hasData ? '✓ (Active)' : ''}
-                                                    {scanningPort === port.path && <span style={{ color: 'var(--accent-primary)' }}> ⏳</span>}
+                                                    [{index}] {port.path} {scanResult?.hasData ? <span style={{ color: 'var(--accent-success)' }}>(Active)</span> : ''}
+                                                    {scanningPort === port.path && <span style={{ color: 'var(--accent-primary)', fontSize: '11px', marginLeft: '8px' }}>Scanning...</span>}
                                                 </p>
                                             )
                                         })}
