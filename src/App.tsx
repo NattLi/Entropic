@@ -121,6 +121,10 @@ function App() {
     const [searchQuery, setSearchQuery] = useState('')
     const [starredSketches, setStarredSketches] = useState<Set<string>>(new Set())
 
+    // 汉堡菜单状态 (Figma-style)
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const menuRef = useRef<HTMLDivElement>(null)
+
     // Toast Notification
     const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
     const toastTimerRef = useRef<any>(null)
@@ -298,11 +302,20 @@ function App() {
         }
         window.addEventListener('keydown', handleKeyDown)
 
+        // 点击外部关闭汉堡菜单
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setIsMenuOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+
         return () => {
             if (window.processingAPI) {
                 window.processingAPI.removeOutputListener()
             }
             window.removeEventListener('keydown', handleKeyDown)
+            document.removeEventListener('mousedown', handleClickOutside)
         }
     }, [loadSketches])
 
@@ -861,6 +874,93 @@ function App() {
             {/* Toolbar */}
             <div className="toolbar">
                 <div className="toolbar-left">
+                    {/* Figma-style Hamburger Menu */}
+                    <div ref={menuRef} style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            style={{
+                                background: isMenuOpen ? 'var(--bg-tertiary)' : 'transparent',
+                                border: 'none',
+                                color: 'var(--text-primary)',
+                                fontSize: '18px',
+                                padding: '8px 10px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'background 0.2s'
+                            }}
+                        >
+                            <span style={{ fontSize: '20px' }}>☰</span>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {isMenuOpen && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                marginTop: '4px',
+                                background: 'var(--bg-secondary)',
+                                border: '1px solid var(--bg-tertiary)',
+                                borderRadius: '8px',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                                minWidth: '160px',
+                                zIndex: 1000,
+                                padding: '6px 0',
+                            }}>
+                                {/* File Menu */}
+                                <div style={{ position: 'relative' }}
+                                    onMouseEnter={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'block'; e.currentTarget.style.background = 'var(--accent-primary)'; }}
+                                    onMouseLeave={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'none'; e.currentTarget.style.background = 'transparent'; }}>
+                                    <div style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>File</span><span style={{ fontSize: '10px', opacity: 0.6 }}>›</span></div>
+                                    <div className="sub" style={{ display: 'none', position: 'absolute', left: '100%', top: 0, marginLeft: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--bg-tertiary)', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', minWidth: '180px', padding: '6px 0' }}>
+                                        <div onClick={() => { handleCreateSketch(); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>New Sketch</div>
+                                        <div onClick={() => { handleSave(); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Save</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+S</span></div>
+                                    </div>
+                                </div>
+                                {/* Edit Menu */}
+                                <div style={{ position: 'relative' }}
+                                    onMouseEnter={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'block'; e.currentTarget.style.background = 'var(--accent-primary)'; }}
+                                    onMouseLeave={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'none'; e.currentTarget.style.background = 'transparent'; }}>
+                                    <div style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Edit</span><span style={{ fontSize: '10px', opacity: 0.6 }}>›</span></div>
+                                    <div className="sub" style={{ display: 'none', position: 'absolute', left: '100%', top: 0, marginLeft: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--bg-tertiary)', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', minWidth: '180px', padding: '6px 0' }}>
+                                        <div onClick={() => { document.execCommand('undo'); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Undo</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+Z</span></div>
+                                        <div onClick={() => { document.execCommand('redo'); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Redo</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+Y</span></div>
+                                        <div style={{ height: '1px', background: 'var(--bg-tertiary)', margin: '6px 0' }} />
+                                        <div onClick={() => { document.execCommand('cut'); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Cut</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+X</span></div>
+                                        <div onClick={() => { document.execCommand('copy'); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Copy</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+C</span></div>
+                                        <div onClick={() => { document.execCommand('paste'); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Paste</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+V</span></div>
+                                        <div style={{ height: '1px', background: 'var(--bg-tertiary)', margin: '6px 0' }} />
+                                        <div onClick={() => { document.execCommand('selectAll'); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Select All</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Ctrl+A</span></div>
+                                    </div>
+                                </div>
+                                {/* View Menu */}
+                                <div style={{ position: 'relative' }}
+                                    onMouseEnter={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'block'; e.currentTarget.style.background = 'var(--accent-primary)'; }}
+                                    onMouseLeave={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'none'; e.currentTarget.style.background = 'transparent'; }}>
+                                    <div style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>View</span><span style={{ fontSize: '10px', opacity: 0.6 }}>›</span></div>
+                                    <div className="sub" style={{ display: 'none', position: 'absolute', left: '100%', top: 0, marginLeft: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--bg-tertiary)', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', minWidth: '180px', padding: '6px 0' }}>
+                                        <div onClick={() => { (window as any).electronAPI?.toggleDevTools?.(); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}><span>Developer Tools</span><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>F12</span></div>
+                                    </div>
+                                </div>
+                                <div style={{ height: '1px', background: 'var(--bg-tertiary)', margin: '6px 0' }} />
+                                {/* Help Menu */}
+                                <div style={{ position: 'relative' }}
+                                    onMouseEnter={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'block'; e.currentTarget.style.background = 'var(--accent-primary)'; }}
+                                    onMouseLeave={(e) => { const s = e.currentTarget.querySelector('.sub') as HTMLElement; if (s) s.style.display = 'none'; e.currentTarget.style.background = 'transparent'; }}>
+                                    <div style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Help</span><span style={{ fontSize: '10px', opacity: 0.6 }}>›</span></div>
+                                    <div className="sub" style={{ display: 'none', position: 'absolute', left: '100%', top: 0, marginLeft: '4px', background: 'var(--bg-secondary)', border: '1px solid var(--bg-tertiary)', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)', minWidth: '180px', padding: '6px 0' }}>
+                                        <div onClick={() => { handleOpenLibs(); setIsMenuOpen(false); }} style={{ padding: '8px 16px', cursor: 'pointer', color: 'var(--text-primary)', fontSize: '14px' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-tertiary)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>Open Libraries Folder</div>
+                                        <div style={{ height: '1px', background: 'var(--bg-tertiary)', margin: '6px 0' }} />
+                                        <div style={{ padding: '8px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>Entropic v0.4.0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <h1 className="app-title">✨ Entropic</h1>
                     <span className="subtitle">For Designers & Artists</span>
                 </div>
@@ -1401,7 +1501,7 @@ function App() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
 

@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Star/Pin feature with backend persistence (`.starred.json`)
     - Starred sketches grouped at top of list
     - Visual hierarchy: active item accent border, inactive opacity reduction
+- **Figma-style Hamburger Menu**:
+    - Modern nested submenu design with hover-reveal behavior
+    - File menu: New Sketch, Save
+    - Edit menu: Undo, Redo, Cut, Copy, Paste, Select All
+    - View menu: Developer Tools
+    - Help menu: Open Libraries Folder, Version info
+    - System menu bar hidden (`autoHideMenuBar: true`)
 
 ### Changed
 - **Neutral Dark Theme**: Replaced purple-tinted theme with neutral gray/black color scheme

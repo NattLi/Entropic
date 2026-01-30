@@ -427,8 +427,11 @@ function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
         },
-        backgroundColor: '#1E1E2E',
-        titleBarStyle: 'default',
+        backgroundColor: '#1E1E1E',
+        // Figma-style: 隐藏系统菜单栏
+        autoHideMenuBar: true,  // Windows: 按 Alt 可临时显示菜单
+        // macOS: 使用原生标题栏样式（红绿灯按钮保留）
+        titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     })
 
     win.webContents.on('did-finish-load', () => {
