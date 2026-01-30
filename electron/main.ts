@@ -675,6 +675,50 @@ void draw() {
 }
 `
 
+// ========= 星标管理 =========
+const getStarredFilePath = () => {
+    const sketchbookPath = ensureSketchbookExists()
+    return path.join(sketchbookPath, '.starred.json')
+}
+
+// 获取星标列表
+ipcMain.handle('get-starred-sketches', async () => {
+    try {
+        const filePath = getStarredFilePath()
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf-8')
+            return { success: true, starred: JSON.parse(data) }
+        }
+        return { success: true, starred: [] }
+    } catch (error) {
+        return { success: false, starred: [], error: error.message }
+    }
+})
+
+// 切换星标状态
+ipcMain.handle('toggle-star-sketch', async (event, sketchId: string) => {
+    try {
+        const filePath = getStarredFilePath()
+        let starred: string[] = []
+
+        if (fs.existsSync(filePath)) {
+            starred = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+        }
+
+        const index = starred.indexOf(sketchId)
+        if (index >= 0) {
+            starred.splice(index, 1) // 取消星标
+        } else {
+            starred.push(sketchId) // 添加星标
+        }
+
+        fs.writeFileSync(filePath, JSON.stringify(starred, null, 2))
+        return { success: true, starred, isStarred: index < 0 }
+    } catch (error) {
+        return { success: false, error: error.message }
+    }
+})
+
 // 获取所有 sketches
 ipcMain.handle('get-sketches', async () => {
     try {

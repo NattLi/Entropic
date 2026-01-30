@@ -52,6 +52,10 @@ contextBridge.exposeInMainWorld('processingAPI', {
     restoreBinItem: (id: string, type: string) => ipcRenderer.invoke('restore-bin-item', id, type),
     permanentDeleteBinItem: (id: string, type: string) => ipcRenderer.invoke('permanent-delete-bin-item', id, type),
     emptyBin: () => ipcRenderer.invoke('empty-bin'),
+
+    // 星标 API
+    getStarredSketches: () => ipcRenderer.invoke('get-starred-sketches'),
+    toggleStarSketch: (sketchId: string) => ipcRenderer.invoke('toggle-star-sketch', sketchId),
 })
 
 export { }
@@ -101,6 +105,10 @@ declare global {
             restoreBinItem: (id: string, type: string) => Promise<{ success: boolean; error?: string }>
             permanentDeleteBinItem: (id: string, type: string) => Promise<{ success: boolean; error?: string }>
             emptyBin: () => Promise<{ success: boolean; error?: string }>
+
+            // Starred sketches management
+            getStarredSketches: () => Promise<{ success: boolean; starred: string[]; error?: string }>
+            toggleStarSketch: (sketchId: string) => Promise<{ success: boolean; starred: string[]; isStarred: boolean; error?: string }>
         }
     }
 }

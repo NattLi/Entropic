@@ -3,7 +3,7 @@
 > **项目名称**: Entropic (Entropy + Picture)  
 > **定位**: A modern alternative to Processing IDE  
 > **目标用户**: 设计师和艺术家（非程序员）  
-> **更新日期**: 2026-01-29
+> **更新日期**: 2026-01-30
 
 ---
 
@@ -29,6 +29,13 @@ Entropic 是一个面向设计师和艺术家的 Processing IDE 替代品。
 - [x] **独立运行**（内置 JDK + Processing Core，用户无需安装）
 - [x] **动态库检测**（解析 import 语句）
 - [x] **Import 预处理器**（自动转换 PDE → Java）
+- [x] **版本管理系统**（Variant Stash & Restore）
+- [x] **回收站功能**（Bin System）
+- [x] **Sketchbook 体验优化** (v0.4.0)
+  - [x] 日期分组 (Today/Yesterday)
+  - [x] 实时搜索过滤
+  - [x] 星标置顶 (Star/Pin) & 后端存储
+  - [x] 视觉层次优化
 
 ---
 

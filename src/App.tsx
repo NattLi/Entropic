@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import './App.css'
 import Editor from './components/Editor'
 
@@ -117,6 +117,10 @@ function App() {
     const [binItems, setBinItems] = useState<BinItem[]>([])
     const [isBinExpanded, setIsBinExpanded] = useState(false)
 
+    // 搜索和星标状态
+    const [searchQuery, setSearchQuery] = useState('')
+    const [starredSketches, setStarredSketches] = useState<Set<string>>(new Set())
+
     // Toast Notification
     const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
     const toastTimerRef = useRef<any>(null)
@@ -128,6 +132,74 @@ function App() {
             setToast(prev => ({ ...prev, visible: false }))
         }, 1500)
     }
+
+    // 日期分组辅助函数
+    const getDateLabel = (dateStr: string): string => {
+        // dateStr 格式: S_YYYYMMDD_XX 或 YYYYMMDD
+        const match = dateStr.match(/(\d{4})(\d{2})(\d{2})/)
+        if (!match) return 'Other'
+
+        const sketchDate = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]))
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+
+        if (sketchDate >= today) return 'Today'
+        if (sketchDate >= yesterday) return 'Yesterday'
+
+        // 返回日期格式: Jan 29
+        return sketchDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+
+    // 分组、过滤和排序 sketches
+    const groupedSketches = useMemo(() => {
+        // 1. 过滤
+        let filtered = sketches
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase()
+            filtered = sketches.filter(s => s.name.toLowerCase().includes(query))
+        }
+
+        // 2. 分离星标和非星标
+        const starred = filtered.filter(s => starredSketches.has(s.id))
+        const unstarred = filtered.filter(s => !starredSketches.has(s.id))
+
+        // 3. 按日期分组
+        const groups: { label: string; sketches: Sketch[] }[] = []
+
+        // 星标放在最前面
+        if (starred.length > 0) {
+            groups.push({ label: '⭐ Starred', sketches: starred })
+        }
+
+        // 对非星标按日期分组
+        const dateGroups = new Map<string, Sketch[]>()
+        unstarred.forEach(sketch => {
+            const label = getDateLabel(sketch.name)
+            if (!dateGroups.has(label)) {
+                dateGroups.set(label, [])
+            }
+            dateGroups.get(label)!.push(sketch)
+        })
+
+        // 按日期顺序添加：Today, Yesterday, 其他日期按时间倒序
+        const dateOrder = ['Today', 'Yesterday']
+        dateOrder.forEach(label => {
+            if (dateGroups.has(label)) {
+                groups.push({ label, sketches: dateGroups.get(label)! })
+                dateGroups.delete(label)
+            }
+        })
+
+        // 其他日期
+        const otherDates = Array.from(dateGroups.entries())
+        otherDates.forEach(([label, sketches]) => {
+            groups.push({ label, sketches })
+        })
+
+        return groups
+    }, [sketches, searchQuery, starredSketches])
 
     /**
      * 生成默认 Sketch 名称
@@ -198,6 +270,17 @@ function App() {
 
         // 加载 Sketchbook
         loadSketches()
+
+        // 加载星标列表
+        const loadStarred = async () => {
+            if (window.processingAPI?.getStarredSketches) {
+                const result = await window.processingAPI.getStarredSketches()
+                if (result.success) {
+                    setStarredSketches(new Set(result.starred))
+                }
+            }
+        }
+        loadStarred()
 
         // 监听 Processing 输出
         if (window.processingAPI) {
@@ -804,168 +887,258 @@ function App() {
                 {/* Sidebar */}
                 <div className="sidebar">
                     <h3>📁 My Sketches</h3>
+
+                    {/* 搜索框 */}
+                    <div style={{ padding: '0 10px 10px', position: 'relative' }}>
+                        <input
+                            type="text"
+                            placeholder="🔍 Search..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '6px 28px 6px 10px',
+                                background: 'var(--bg-primary)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '6px',
+                                color: 'var(--text-primary)',
+                                fontSize: '13px',
+                                outline: 'none'
+                            }}
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                style={{
+                                    position: 'absolute',
+                                    right: '16px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    padding: '0'
+                                }}
+                            >×</button>
+                        )}
+                    </div>
+
                     <div className="project-list">
-                        {sketches.length === 0 ? (
+                        {groupedSketches.length === 0 ? (
                             <div className="empty-state" style={{ padding: '10px', opacity: 0.5 }}>
-                                No sketches yet
+                                {searchQuery ? 'No matches found' : 'No sketches yet'}
                             </div>
                         ) : (
-                            sketches.map(sketch => (
-                                <div key={sketch.id}>
-                                    {/* 主 sketch 项目 */}
-                                    <div
-                                        className={`project-item ${currentSketch?.id === sketch.id ? 'active' : ''}`}
-                                        onClick={async () => {
-                                            // 展开风琴并加载 Working Copy
-                                            if (!expandedSketches.has(sketch.id)) {
-                                                await toggleExpand(sketch.id)
-                                            }
-                                            handleSelectSketch(sketch)
-                                        }}
-                                        onDoubleClick={(e) => {
-                                            e.stopPropagation()
-                                            handleStartRename(sketch, e)
-                                        }}
-                                        onContextMenu={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            const menu = document.createElement('div')
-                                            menu.className = 'context-menu'
-                                            menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
-                                            menu.innerHTML = `
+                            groupedSketches.map(group => (
+                                <div key={group.label}>
+                                    {/* 日期分组标题 */}
+                                    <div style={{
+                                        padding: '8px 12px 4px',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        color: 'var(--text-secondary)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        borderTop: '1px solid var(--border-color)',
+                                        marginTop: '4px'
+                                    }}>
+                                        {group.label}
+                                    </div>
+
+                                    {group.sketches.map(sketch => (
+                                        <div key={sketch.id}>
+                                            {/* 主 sketch 项目 */}
+                                            <div
+                                                className={`project-item ${currentSketch?.id === sketch.id ? 'active' : ''}`}
+                                                style={{
+                                                    borderLeft: currentSketch?.id === sketch.id ? '3px solid var(--accent-primary)' : '3px solid transparent',
+                                                    paddingLeft: '10px',
+                                                    transition: 'all 0.2s ease'
+                                                }}
+                                                onClick={async () => {
+                                                    // 展开风琴并加载 Working Copy
+                                                    if (!expandedSketches.has(sketch.id)) {
+                                                        await toggleExpand(sketch.id)
+                                                    }
+                                                    handleSelectSketch(sketch)
+                                                }}
+                                                onDoubleClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleStartRename(sketch, e)
+                                                }}
+                                                onContextMenu={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    const menu = document.createElement('div')
+                                                    menu.className = 'context-menu'
+                                                    menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
+                                                    menu.innerHTML = `
+                                                <div class="context-menu-item" data-action="star">${starredSketches.has(sketch.id) ? '☆ Unstar' : '⭐ Star'}</div>
                                                 <div class="context-menu-item" data-action="rename">✏️ Rename</div>
                                                 <div class="context-menu-item" data-action="reveal">📂 Reveal in Folder</div>
                                                 <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
                                             `
-                                            document.body.appendChild(menu)
-                                            const handleClick = (ev: MouseEvent) => {
-                                                const target = ev.target as HTMLElement
-                                                const action = target.dataset.action
-                                                if (action === 'rename') handleStartRename(sketch, e as any)
-                                                else if (action === 'delete') handleDeleteSketch(sketch, e as any)
-                                                else if (action === 'reveal') window.processingAPI.showItemInFolder(sketch.id)
-                                                menu.remove()
-                                                document.removeEventListener('click', handleClick)
-                                            }
-                                            setTimeout(() => document.addEventListener('click', handleClick), 0)
-                                        }}
-                                    >
-                                        {renamingSketch === sketch.id ? (
-                                            <input
-                                                type="text"
-                                                value={renameValue}
-                                                onChange={(e) => setRenameValue(e.target.value)}
-                                                onBlur={handleRename}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') handleRename()
-                                                    if (e.key === 'Escape') setRenamingSketch(null)
-                                                }}
-                                                onClick={(e) => e.stopPropagation()}
-                                                autoFocus
-                                                style={{
-                                                    flex: 1, background: 'var(--bg-primary)',
-                                                    border: '1px solid var(--accent-primary)',
-                                                    color: 'var(--text-primary)', padding: '4px 8px',
-                                                    borderRadius: '4px', fontSize: '14px', width: '100%'
-                                                }}
-                                            />
-                                        ) : (
-                                            <>
-                                                <span style={{ flex: 1 }}>🎨 {sketch.name}</span>
-                                                {currentSketch?.id === sketch.id && hasUnsavedChanges && (
-                                                    <span style={{ opacity: 0.5 }}>●</span>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* 变体列表（手风琴展开） */}
-                                    {expandedSketches.has(sketch.id) && (
-                                        <div className="variants-list" style={{ paddingLeft: '20px' }}>
-                                            {/* Working Copy (主文件) 固定项 */}
-                                            <div
-                                                className={`variant-item ${activeVariantId === null ? 'active' : ''}`}
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleSelectSketch(sketch)
-                                                }}
-                                                style={{
-                                                    padding: '6px 10px', fontSize: '13px',
-                                                    cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                                    fontWeight: activeVariantId === null ? 600 : 400,
-                                                    color: activeVariantId === null ? 'var(--accent-primary)' : 'inherit',
-                                                    borderLeft: activeVariantId === null ? '2px solid var(--accent-primary)' : '2px solid transparent'
+                                                    document.body.appendChild(menu)
+                                                    const handleClick = async (ev: MouseEvent) => {
+                                                        const target = ev.target as HTMLElement
+                                                        const action = target.dataset.action
+                                                        if (action === 'star') {
+                                                            if (window.processingAPI?.toggleStarSketch) {
+                                                                const result = await window.processingAPI.toggleStarSketch(sketch.id)
+                                                                if (result.success) {
+                                                                    setStarredSketches(new Set(result.starred))
+                                                                }
+                                                            } else {
+                                                                // Fallback for older version or dev environment
+                                                                setStarredSketches(prev => {
+                                                                    const newSet = new Set(prev)
+                                                                    if (newSet.has(sketch.id)) {
+                                                                        newSet.delete(sketch.id)
+                                                                    } else {
+                                                                        newSet.add(sketch.id)
+                                                                    }
+                                                                    return newSet
+                                                                })
+                                                            }
+                                                        }
+                                                        else if (action === 'rename') handleStartRename(sketch, e as any)
+                                                        else if (action === 'delete') handleDeleteSketch(sketch, e as any)
+                                                        else if (action === 'reveal') window.processingAPI.showItemInFolder(sketch.id)
+                                                        menu.remove()
+                                                        document.removeEventListener('click', handleClick)
+                                                    }
+                                                    setTimeout(() => document.addEventListener('click', handleClick), 0)
                                                 }}
                                             >
-                                                <span style={{ flex: 1 }}>📝 Working Copy</span>
+                                                {renamingSketch === sketch.id ? (
+                                                    <input
+                                                        type="text"
+                                                        value={renameValue}
+                                                        onChange={(e) => setRenameValue(e.target.value)}
+                                                        onBlur={handleRename}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleRename()
+                                                            if (e.key === 'Escape') setRenamingSketch(null)
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        autoFocus
+                                                        style={{
+                                                            flex: 1, background: 'var(--bg-primary)',
+                                                            border: '1px solid var(--accent-primary)',
+                                                            color: 'var(--text-primary)', padding: '4px 8px',
+                                                            borderRadius: '4px', fontSize: '14px', width: '100%'
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        {/* 星标图标 (仅在星标时显示) */}
+                                                        {starredSketches.has(sketch.id) && (
+                                                            <span style={{ marginRight: '4px', fontSize: '10px' }}>⭐</span>
+                                                        )}
+                                                        <span style={{
+                                                            flex: 1,
+                                                            opacity: currentSketch?.id === sketch.id ? 1 : 0.55
+                                                        }}>
+                                                            🎨 {sketch.name}
+                                                        </span>
+                                                        {currentSketch?.id === sketch.id && hasUnsavedChanges && (
+                                                            <span style={{ opacity: 0.5 }}>●</span>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
 
-                                            {/* 变体列表 */}
-                                            {(variants.get(sketch.id) || []).map(variant => (
-                                                <div
-                                                    key={variant.id}
-                                                    className={`variant-item ${activeVariantId === variant.id ? 'active' : ''}`}
-                                                    style={{
-                                                        padding: '6px 10px', fontSize: '13px',
-                                                        cursor: 'pointer', display: 'flex', alignItems: 'center',
-                                                        fontWeight: activeVariantId === variant.id ? 600 : 400,
-                                                        color: activeVariantId === variant.id ? 'var(--accent-success)' : 'inherit',
-                                                        borderLeft: activeVariantId === variant.id ? '2px solid var(--accent-success)' : '2px solid transparent',
-                                                        background: activeVariantId === variant.id ? 'rgba(0, 230, 118, 0.1)' : 'transparent'
-                                                    }}
-                                                    onClick={() => handleLoadVariant(sketch.id, variant.id)}
-                                                    onDoubleClick={(e) => handleStartRenameVariant(sketch.id, variant.id, variant.name, e)}
-                                                    onContextMenu={(e) => {
-                                                        e.preventDefault()
-                                                        e.stopPropagation()
-                                                        const menu = document.createElement('div')
-                                                        menu.className = 'context-menu'
-                                                        menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
-                                                        menu.innerHTML = `
+                                            {/* 变体列表（手风琴展开） */}
+                                            {expandedSketches.has(sketch.id) && (
+                                                <div className="variants-list" style={{ paddingLeft: '20px' }}>
+                                                    {/* Working Copy (主文件) 固定项 */}
+                                                    <div
+                                                        className={`variant-item ${activeVariantId === null ? 'active' : ''}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            handleSelectSketch(sketch)
+                                                        }}
+                                                        style={{
+                                                            padding: '6px 10px', fontSize: '13px',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                                            fontWeight: activeVariantId === null ? 600 : 400,
+                                                            color: activeVariantId === null ? 'var(--accent-primary)' : 'inherit',
+                                                            borderLeft: activeVariantId === null ? '2px solid var(--accent-primary)' : '2px solid transparent'
+                                                        }}
+                                                    >
+                                                        <span style={{ flex: 1 }}>📝 Working Copy</span>
+                                                    </div>
+
+                                                    {/* 变体列表 */}
+                                                    {(variants.get(sketch.id) || []).map(variant => (
+                                                        <div
+                                                            key={variant.id}
+                                                            className={`variant-item ${activeVariantId === variant.id ? 'active' : ''}`}
+                                                            style={{
+                                                                padding: '6px 10px', fontSize: '13px',
+                                                                cursor: 'pointer', display: 'flex', alignItems: 'center',
+                                                                fontWeight: activeVariantId === variant.id ? 600 : 400,
+                                                                color: activeVariantId === variant.id ? 'var(--accent-success)' : 'inherit',
+                                                                borderLeft: activeVariantId === variant.id ? '2px solid var(--accent-success)' : '2px solid transparent',
+                                                                background: activeVariantId === variant.id ? 'rgba(0, 230, 118, 0.1)' : 'transparent'
+                                                            }}
+                                                            onClick={() => handleLoadVariant(sketch.id, variant.id)}
+                                                            onDoubleClick={(e) => handleStartRenameVariant(sketch.id, variant.id, variant.name, e)}
+                                                            onContextMenu={(e) => {
+                                                                e.preventDefault()
+                                                                e.stopPropagation()
+                                                                const menu = document.createElement('div')
+                                                                menu.className = 'context-menu'
+                                                                menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999;`
+                                                                menu.innerHTML = `
                                                             <div class="context-menu-item" data-action="rename">✏️ Rename</div>
                                                             <div class="context-menu-item" data-action="reveal">📂 Reveal in Folder</div>
                                                             <div class="context-menu-item" data-action="delete">🗑️ Delete</div>
                                                         `
-                                                        document.body.appendChild(menu)
-                                                        const handleClick = (ev: MouseEvent) => {
-                                                            const target = ev.target as HTMLElement
-                                                            const action = target.dataset.action
-                                                            if (action === 'rename') handleStartRenameVariant(sketch.id, variant.id, variant.name, e as any)
-                                                            else if (action === 'delete') handleDeleteVariant(sketch.id, variant.id, e as any)
-                                                            else if (action === 'reveal') window.processingAPI.showItemInFolder(sketch.id, variant.id)
-                                                            menu.remove()
-                                                            document.removeEventListener('click', handleClick)
-                                                        }
-                                                        setTimeout(() => document.addEventListener('click', handleClick), 0)
-                                                    }}
-                                                >
-                                                    {renamingVariant?.sketchId === sketch.id && renamingVariant?.variantId === variant.id ? (
-                                                        <input
-                                                            type="text"
-                                                            value={variantRenameValue}
-                                                            onChange={(e) => setVariantRenameValue(e.target.value)}
-                                                            onBlur={handleRenameVariant}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') handleRenameVariant()
-                                                                if (e.key === 'Escape') setRenamingVariant(null)
+                                                                document.body.appendChild(menu)
+                                                                const handleClick = (ev: MouseEvent) => {
+                                                                    const target = ev.target as HTMLElement
+                                                                    const action = target.dataset.action
+                                                                    if (action === 'rename') handleStartRenameVariant(sketch.id, variant.id, variant.name, e as any)
+                                                                    else if (action === 'delete') handleDeleteVariant(sketch.id, variant.id, e as any)
+                                                                    else if (action === 'reveal') window.processingAPI.showItemInFolder(sketch.id, variant.id)
+                                                                    menu.remove()
+                                                                    document.removeEventListener('click', handleClick)
+                                                                }
+                                                                setTimeout(() => document.addEventListener('click', handleClick), 0)
                                                             }}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            autoFocus
-                                                            style={{
-                                                                flex: 1, background: 'var(--bg-primary)',
-                                                                border: '1px solid var(--accent-primary)',
-                                                                color: 'var(--text-primary)', padding: '2px 6px',
-                                                                borderRadius: '4px', fontSize: '12px'
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <span style={{ flex: 1 }}>├─ {variant.name}</span>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                        >
+                                                            {renamingVariant?.sketchId === sketch.id && renamingVariant?.variantId === variant.id ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={variantRenameValue}
+                                                                    onChange={(e) => setVariantRenameValue(e.target.value)}
+                                                                    onBlur={handleRenameVariant}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') handleRenameVariant()
+                                                                        if (e.key === 'Escape') setRenamingVariant(null)
+                                                                    }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    autoFocus
+                                                                    style={{
+                                                                        flex: 1, background: 'var(--bg-primary)',
+                                                                        border: '1px solid var(--accent-primary)',
+                                                                        color: 'var(--text-primary)', padding: '2px 6px',
+                                                                        borderRadius: '4px', fontSize: '12px'
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <span style={{ flex: 1 }}>├─ {variant.name}</span>
+                                                            )}
+                                                        </div>
+                                                    ))}
 
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
                             ))
                         )}
