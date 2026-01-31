@@ -5,6 +5,17 @@ All notable changes to Entropic will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-01-31
+
+### Added
+- **File Management System** 📂:
+    - Create new sketches with default code template
+    - Save/Load sketch files (`.pde`)
+    - Delete sketches (soft delete to Bin)
+    - Rename sketches with Java-safe name validation
+    - Sketchbook directory: `~/Documents/Entropic/sketches/`
+    - IPC handlers: `create-sketch`, `save-sketch`, `load-sketch`, `delete-sketch`, `rename-sketch`, `get-sketches`
+
 ## [0.5.1] - 2026-01-30
 
 ### Improved
